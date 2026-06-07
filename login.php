@@ -89,7 +89,7 @@ if($_SERVER['REQUEST_METHOD'] === 'POST'){
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SA Health Login</title>
+<title>SA Healthcare Management System — Login</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -101,7 +101,7 @@ body {
     margin: 0;
     min-height: 100vh;
     font-family: 'Inter', 'Segoe UI', sans-serif;
-    background: url('assets/backgrounds/sa_flag.jpg') no-repeat center center fixed;
+    background: #eef2f8 url('assets/backgrounds/sa_flag.jpg') no-repeat center center fixed;
     background-size: cover;
     overflow-x: hidden;
 }
@@ -109,7 +109,9 @@ body {
 .bg-overlay {
     position: fixed;
     inset: 0;
-    background: linear-gradient(135deg, rgba(0,30,80,0.15) 0%, rgba(0,0,0,0.08) 50%, rgba(180,0,0,0.1) 100%);
+    background:
+        radial-gradient(ellipse 90% 75% at 50% 45%, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.08) 50%, rgba(12, 35, 80, 0.12) 100%),
+        linear-gradient(160deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.04) 50%, rgba(255, 255, 255, 0.1) 100%);
     pointer-events: none;
     z-index: 0;
 }
@@ -120,26 +122,18 @@ body {
     pointer-events: none;
     z-index: 0;
     overflow: hidden;
+    opacity: 0.85;
 }
 
 .bg-decor svg {
     position: absolute;
-    opacity: 0.12;
+    opacity: 0.08;
 }
 
-.bg-decor .cross-1 { top: 8%; right: 12%; width: 80px; opacity: 0.18; }
-.bg-decor .cross-2 { bottom: 18%; left: 6%; width: 120px; opacity: 0.15; }
-.bg-decor .ekg { bottom: 22%; left: 14%; width: 200px; opacity: 0.2; }
-.bg-decor .cityscape { bottom: 0; right: 0; width: 45%; opacity: 0.25; }
-
-.flow-paths {
-    position: fixed;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    z-index: 1;
-}
+.bg-decor .cross-1 { top: 8%; right: 12%; width: 80px; opacity: 0.1; }
+.bg-decor .cross-2 { bottom: 18%; left: 6%; width: 120px; opacity: 0.08; }
+.bg-decor .ekg { bottom: 22%; left: 14%; width: 200px; opacity: 0.1; }
+.bg-decor .cityscape { bottom: 0; right: 0; width: 45%; opacity: 0.12; }
 
 .page {
     position: relative;
@@ -187,14 +181,16 @@ body {
     gap: 10px;
     width: 200px;
     padding: 10px 12px 14px;
-    background: rgba(255, 255, 255, 0.93);
+    background: rgba(255, 255, 255, 0.42);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     border-radius: 14px;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.14);
+    box-shadow: 0 8px 24px rgba(15, 35, 70, 0.1);
     cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
     position: relative;
     overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.55);
 }
 
 .province-card::after {
@@ -209,7 +205,8 @@ body {
 
 .province-card:hover {
     transform: translateY(-2px) scale(1.02);
-    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+    background: rgba(255, 255, 255, 0.58);
+    box-shadow: 0 12px 32px rgba(15, 35, 70, 0.14);
 }
 
 .province-card .emblem {
@@ -264,13 +261,13 @@ body {
     flex-shrink: 0;
     padding: 32px 36px 28px;
     border-radius: 22px;
-    background: rgba(255, 255, 255, 0.22);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    border: 1.5px solid rgba(255, 255, 255, 0.65);
+    background: rgba(255, 255, 255, 0.28);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1.5px solid rgba(255, 255, 255, 0.55);
     box-shadow:
-        0 8px 32px rgba(0, 0, 0, 0.12),
-        inset 0 1px 0 rgba(255, 255, 255, 0.5);
+        0 12px 40px rgba(15, 35, 70, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.45);
 }
 
 .logo-wrap {
@@ -460,9 +457,25 @@ body {
     flex-shrink: 0;
 }
 
+.auth-links {
+    margin-top: 14px;
+    text-align: center;
+    font-size: 13px;
+    color: #3d5a8a;
+}
+
+.auth-links a {
+    color: #0a2a6e;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.auth-links a:hover {
+    text-decoration: underline;
+}
+
 @media (max-width: 960px) {
     .side, .bottom { display: none; }
-    .flow-paths { display: none; }
     .login-card { width: 100%; max-width: 420px; }
 }
 </style>
@@ -488,15 +501,6 @@ body {
         <rect x="355" y="60" width="25" height="60" fill="#1a5276" opacity="0.5"/>
     </svg>
 </div>
-
-<svg class="flow-paths" viewBox="0 0 1200 700" preserveAspectRatio="xMidYMid slice">
-    <path d="M 180 180 Q 320 220 480 310" stroke="#2d8f52" stroke-width="28" fill="none" opacity="0.55" stroke-linecap="round"/>
-    <path d="M 180 350 Q 340 340 480 350" stroke="#2d8f52" stroke-width="28" fill="none" opacity="0.5" stroke-linecap="round"/>
-    <path d="M 180 520 Q 320 480 480 390" stroke="#2d8f52" stroke-width="28" fill="none" opacity="0.55" stroke-linecap="round"/>
-    <path d="M 1020 180 Q 880 220 720 310" stroke="#2d8f52" stroke-width="28" fill="none" opacity="0.55" stroke-linecap="round"/>
-    <path d="M 1020 350 Q 860 340 720 350" stroke="#2d8f52" stroke-width="28" fill="none" opacity="0.5" stroke-linecap="round"/>
-    <path d="M 1020 520 Q 880 480 720 390" stroke="#2d8f52" stroke-width="28" fill="none" opacity="0.55" stroke-linecap="round"/>
-</svg>
 
 <div class="page">
 <div class="wrapper">
@@ -539,7 +543,7 @@ body {
     </svg>
 </div>
 
-<h1>SA Health Database System</h1>
+<h1>SA Healthcare Management System</h1>
 <p class="tagline">Secure. Connected. For a healthier South Africa.</p>
 
 <?php if($error): ?>
@@ -615,6 +619,8 @@ body {
 </button>
 
 </form>
+
+<p class="auth-links">New staff member? <a href="register.php">Create an account</a></p>
 
 <div class="secure-footer">
     <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.6 3.8 10.7 9 12 5.2-1.3 9-6.4 9-12V5l-9-4zm-1 14l-4-4 1.4-1.4L11 12.2l5.6-5.6L18 8l-7 7z" fill="#27ae60"/></svg>

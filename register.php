@@ -153,7 +153,7 @@ if($_SERVER['REQUEST_METHOD'] == "POST"){
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Register</title>
+<title>SA Healthcare Management System — Register</title>
 
 <style>
 *{
@@ -296,6 +296,23 @@ button:hover{
     font-size:13px;
 }
 
+.auth-links{
+    margin-top:16px;
+    text-align:center;
+    font-size:13px;
+    color:#64748b;
+}
+
+.auth-links a{
+    color:#1e40af;
+    font-weight:600;
+    text-decoration:none;
+}
+
+.auth-links a:hover{
+    text-decoration:underline;
+}
+
 .hidden{
     display:none;
 }
@@ -320,7 +337,7 @@ button:hover{
         <div class="header">
             <div class="icon">📝</div>
             <h2 id="formTitle">Register</h2>
-            <p>Create a new staff or patient record in the system</p>
+            <p>SA Healthcare Management System — staff or patient registration</p>
         </div>
 
         <?php if($success): ?>
@@ -405,6 +422,8 @@ button:hover{
         <div class="helper">
             Make sure the province, city and facility match the assigned user location.
         </div>
+
+        <p class="auth-links">Already have an account? <a href="login.php">Sign in</a></p>
 
     </div>
 </div>

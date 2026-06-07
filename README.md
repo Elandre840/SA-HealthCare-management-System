@@ -14,6 +14,31 @@ A role-based web application that simulates clinic operations from patient arriv
 
 ---
 
+## Case Study
+
+### Problem
+Clinic staff often work in silos — reception, nursing, doctors, and pharmacy each track patients differently. That makes queues hard to monitor, handoffs easy to miss, and reporting slow to produce across multiple sites.
+
+### Solution
+Built a single web platform where each role sees only what they need, scoped to their **province, city, and facility**. Patients move through a defined workflow with live queue visibility, internal announcements, and emergency triage alerts (MediAlert).
+
+### Key challenges & how they were solved
+
+| Challenge | Approach |
+|-----------|----------|
+| Multiple roles, one database | Unified `users` table with `account_type` and role-based routing after login |
+| Multi-facility demo data | Facility-scoped queries and province-themed UI via `config_geo.php` |
+| Emergency escalation | Nurse/doctor triage triggers in-app announcements plus email/SMS logging pipeline |
+| Readable dashboards | Chart.js reporting, KPI cards, and print-friendly report views |
+
+### Skills demonstrated
+PHP · MySQL · Session-based RBAC · REST-style form workflows · SQL schema design · HTML/CSS/JS · Chart.js · XAMPP local deployment
+
+### Planned improvements
+Prepared statements across all queries · bcrypt-only demo passwords · admin dashboard · CSRF protection · optional live demo deployment
+
+---
+
 ## Features
 
 | Area | Capabilities |
@@ -42,7 +67,7 @@ A role-based web application that simulates clinic operations from patient arriv
 1. Clone the repo into your XAMPP `htdocs` folder.
 2. Import `clinic_system_demo_v2.sql` into MySQL.
 3. Confirm database settings in `db.php` (defaults work for XAMPP).
-4. Open `http://localhost/clinic_system/login.php`.
+4. Open `http://localhost/clinic_system/` or `http://localhost/clinic_system/login.php`.
 
 Full step-by-step instructions: **[setup.md](setup.md)**
 
@@ -69,6 +94,7 @@ clinic_system/
 │   └── screenshots/     # Portfolio screenshots
 ├── views/               # Shared staff UI partials
 ├── login.php            # Entry point + role routing
+├── index.php            # Redirects to login
 ├── register.php         # Staff registration
 ├── receptionist.php     # Reception dashboard
 ├── nurse.php            # Nurse workflow
