@@ -29,18 +29,28 @@ $announcementsExists = cs_announcements_supported($conn);
 if (isset($_POST['action']) && $_POST['action'] === 'dispense_medication') {
     $pid = (int)($_POST['patient_id'] ?? 0);
     if ($pid > 0) {
-        $note = trim($_POST['pharmacy_notes'] ?? '');
-        if ($note === '') {
-            $note = 'Medication dispensed.';
-        }
-        cs_update_patient($conn, $facilityId, $pid, [
-            'status' => 'Completed',
-            'department' => 'Pharmacy',
-            'medication' => trim($_POST['dispensed_medication'] ?? ''),
-            'notes' => 'Pharmacy: ' . $note,
+        $patientCheck = cs_fetch_patients($conn, $facilityId, [
+            'status_in' => cs_pharmacy_stage_statuses(),
         ]);
+        $allowedIds = array_map(function ($row) {
+            return (int)$row['id'];
+        }, $patientCheck);
+        if (in_array($pid, $allowedIds, true)) {
+            $note = trim($_POST['pharmacy_notes'] ?? '');
+            if ($note === '') {
+                $note = 'Medication dispensed.';
+            }
+            cs_update_patient($conn, $facilityId, $pid, [
+                'status' => 'Completed',
+                'department' => 'Pharmacy',
+                'medication' => trim($_POST['dispensed_medication'] ?? ''),
+                'notes' => 'Pharmacy: ' . $note,
+            ]);
+            header('Location: pharmacy.php?tab=dispense&ok=1');
+            exit;
+        }
     }
-    header('Location: pharmacy.php?tab=dispense&ok=1');
+    header('Location: pharmacy.php?tab=dispense&error=not_ready');
     exit;
 }
 
@@ -63,13 +73,22 @@ $totalPatients = cs_count_patients($conn, $facilityId);
 $search = trim($_GET['search'] ?? '');
 $filter = $_GET['filter'] ?? 'Waiting_Pharmacy';
 $statusIn = ($filter === 'All')
-    ? ['Waiting_Pharmacy','Prescription_Ready','With Doctor','Completed']
+    ? array_merge(cs_pharmacy_stage_statuses(), ['Completed'])
     : [$filter];
 
 $dispenseRows = cs_fetch_patients($conn, $facilityId, [
     'search' => $search,
     'status_in' => $statusIn,
 ]);
+
+$prescriptionHistoryMap = [];
+foreach ($dispenseRows as $dispenseRow) {
+    $prescriptionHistoryMap[(int)$dispenseRow['id']] = cs_fetch_patient_prescription_history(
+        $conn,
+        $facilityId,
+        (int)$dispenseRow['id']
+    );
+}
 
 $queueRows = cs_fetch_patients($conn, $facilityId, [
     'status_in' => ['Waiting_Pharmacy','Prescription_Ready'],
@@ -342,6 +361,9 @@ $navItems = [
         <?php if (isset($_GET['ok'])): ?>
         <div class="alert-success">Medication dispensed. Patient marked as completed.</div>
         <?php endif; ?>
+        <?php if (isset($_GET['error']) && $_GET['error'] === 'not_ready'): ?>
+        <div class="alert-info">This patient is not in the pharmacy queue and cannot be dispensed.</div>
+        <?php endif; ?>
 
         <div class="dash-panel patients-panel">
             <form method="GET" class="filterBar">
@@ -383,16 +405,21 @@ $navItems = [
             </div>
 
             <div id="dispenseFormBox" class="formBox dispense-form">
-                <form method="POST">
+                <form method="POST" id="dispenseForm">
                     <input type="hidden" name="action" value="dispense_medication">
                     <input type="hidden" name="patient_id" id="dispense_patient_id">
                     <h3 id="dispensePatientName">Dispense Medication</h3>
                     <p id="dispenseMeta" class="muted"></p>
-                    <textarea id="viewDiagnosis" disabled placeholder="Diagnosis will appear here..."></textarea>
+                    <label class="muted" style="display:block;margin-bottom:6px;">Current Prescription</label>
                     <textarea id="viewPrescription" disabled placeholder="Prescription will appear here..."></textarea>
+                    <div id="prescriptionHistoryBox" style="margin:14px 0;">
+                        <label class="muted" style="display:block;margin-bottom:6px;">Prescription History</label>
+                        <div id="prescriptionHistoryList" class="muted">Select a patient to view prescription history.</div>
+                    </div>
                     <textarea name="dispensed_medication" id="dispensed_medication" placeholder="Dispensed medication" required></textarea>
                     <textarea name="pharmacy_notes" placeholder="Pharmacy notes (optional)"></textarea>
-                    <button class="btn">Dispense → Complete</button>
+                    <button class="btn" id="dispenseSubmitBtn" type="submit">Dispense → Complete</button>
+                    <p id="dispenseReadOnlyNote" class="muted" style="display:none;margin-top:10px;">This patient is completed. Prescription history is read-only.</p>
                 </form>
             </div>
         </div>
@@ -651,14 +678,55 @@ window.addEventListener('resize', function() {
     }
 });
 
+const prescriptionHistoryMap = <?= json_encode($prescriptionHistoryMap, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+const pharmacyStageStatuses = <?= json_encode(cs_pharmacy_stage_statuses()) ?>;
+
+function renderPrescriptionHistory(patientId) {
+    const list = document.getElementById('prescriptionHistoryList');
+    if (!list) return;
+
+    const history = prescriptionHistoryMap[patientId] || [];
+    if (!history.length) {
+        list.innerHTML = 'No previous prescriptions recorded.';
+        return;
+    }
+
+    list.innerHTML = history.map(function(entry) {
+        const date = entry.date ? new Date(entry.date).toLocaleString() : 'Unknown date';
+        const rx = escapeHtml(entry.prescription || '—');
+        const med = entry.medication ? '<div><strong>Dispensed:</strong> ' + escapeHtml(entry.medication) + '</div>' : '';
+        const notes = entry.notes ? '<div><strong>Notes:</strong> ' + escapeHtml(entry.notes) + '</div>' : '';
+        return '<div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;padding:12px;margin-bottom:10px;">'
+            + '<strong>' + date + '</strong>'
+            + '<div><strong>Prescription:</strong> ' + rx + '</div>'
+            + med + notes
+            + '</div>';
+    }).join('');
+}
+
 function selectPatient(row) {
     document.getElementById('dispenseFormBox').classList.add('show');
     document.getElementById('dispense_patient_id').value = row.id;
     document.getElementById('dispensePatientName').innerText = 'Dispense — ' + row.full_name;
     document.getElementById('dispenseMeta').innerText = 'ID: ' + (row.id_number || '') + ' • ' + (row.status || '');
-    document.getElementById('viewDiagnosis').value = row.diagnosis || '';
     document.getElementById('viewPrescription').value = row.prescription || '';
     document.getElementById('dispensed_medication').value = row.medication || row.prescription || '';
+    renderPrescriptionHistory(row.id);
+
+    const canDispense = pharmacyStageStatuses.indexOf(row.status || '') !== -1;
+    const submitBtn = document.getElementById('dispenseSubmitBtn');
+    const readOnlyNote = document.getElementById('dispenseReadOnlyNote');
+    const dispensedField = document.getElementById('dispensed_medication');
+    const notesField = document.querySelector('#dispenseForm textarea[name="pharmacy_notes"]');
+
+    if (submitBtn) submitBtn.style.display = canDispense ? 'inline-flex' : 'none';
+    if (readOnlyNote) readOnlyNote.style.display = canDispense ? 'none' : 'block';
+    if (dispensedField) {
+        dispensedField.disabled = !canDispense;
+        dispensedField.required = canDispense;
+    }
+    if (notesField) notesField.disabled = !canDispense;
+
     document.getElementById('dispenseFormBox').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 

@@ -382,7 +382,10 @@ $navItems = [
                 <form method="POST">
                     <input type="hidden" name="action" value="save_vitals">
                     <input type="hidden" name="patient_id" id="patient_id">
-                    <h3 id="patientTitle">Capture Vitals</h3>
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+                        <h3 id="patientTitle" style="margin:0;">Capture Vitals</h3>
+                        <a href="#" id="history_link" class="btn secondary small" style="display:none;text-decoration:none;">Medical Record</a>
+                    </div>
                     <div class="vitals-grid">
                         <input name="bp" id="bp" placeholder="Blood Pressure (e.g. 120/80)" required>
                         <input name="temp" id="temp" placeholder="Temperature (°C)" required>
@@ -714,6 +717,16 @@ function loadPatient(id, row) {
     var emergencyPid = document.getElementById('emergency_patient_id');
     if (emergencyPid) emergencyPid.value = id;
     document.getElementById('patientTitle').innerText = 'Vitals — ' + row.full_name;
+    var historyLink = document.getElementById('history_link');
+    var nurseActive = ['With Nurse', 'Waiting_Doctor', 'With Doctor', 'Consulting', 'Waiting_Pharmacy'];
+    if (historyLink) {
+        if (nurseActive.indexOf(row.status || '') !== -1) {
+            historyLink.style.display = 'inline-flex';
+            historyLink.href = 'patient_history.php?patient_id=' + id;
+        } else {
+            historyLink.style.display = 'none';
+        }
+    }
     document.getElementById('bp').value = row.bp || '';
     document.getElementById('temp').value = row.temp || '';
     document.getElementById('pulse').value = row.pulse || '';

@@ -150,8 +150,8 @@ $todayAppointmentsCount = count(cs_fetch_appointments($conn, $facilityId, [
 $search = trim($_GET['search'] ?? '');
 $patientRows = cs_fetch_patients($conn, $facilityId, [
     'search' => $search,
-    'status_in' => ['Waiting_Doctor','With Doctor','Consulting','Waiting_Pharmacy','Completed'],
-    'order' => "FIELD(status,'With Doctor','Consulting','Waiting_Doctor','Waiting_Pharmacy','Completed'), id DESC",
+    'status_in' => cs_doctor_stage_statuses(),
+    'order' => "FIELD(status,'With Doctor','Consulting','Waiting_Doctor'), id DESC",
 ]);
 
 $queueRows = cs_fetch_patients($conn, $facilityId, [
@@ -449,6 +449,7 @@ $navItems = [
 <?php if ($tab === 'patients'): ?>
 
         <h2 class="section-title">Patient Consultations</h2>
+        <p class="muted" style="margin:-12px 0 18px;">Only patients waiting for or currently with the doctor are shown here. Completed visits are managed by reception.</p>
 
         <?php if (isset($_GET['saved'])): ?>
         <div class="alert-success">Consultation saved successfully.</div>
@@ -489,7 +490,7 @@ $navItems = [
                     </thead>
                     <tbody>
                     <?php if (count($patientRows) === 0): ?>
-                        <tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:30px;">No patients found.</td></tr>
+                        <tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:30px;">No patients waiting for doctor.</td></tr>
                     <?php endif; ?>
                     <?php foreach ($patientRows as $r): ?>
                         <tr>
@@ -914,6 +915,7 @@ $navItems = [
         <div class="consult-summary">
             <p class="muted" id="c_meta"></p>
             <p class="consult-notes"><strong>Nurse notes:</strong> <span id="c_notes"></span></p>
+            <p style="margin-top:10px;"><a href="#" id="c_history_link" class="btn secondary small" style="text-decoration:none;">View Medical Record</a></p>
         </div>
         <form method="POST">
             <input type="hidden" name="action" value="start_consultation">
@@ -1023,6 +1025,10 @@ function openConsult(row) {
     document.getElementById('c_name').innerText = row.full_name || 'Consultation';
     document.getElementById('c_meta').innerText = 'ID: ' + (row.id_number || '') + ' • Status: ' + (row.status || '');
     document.getElementById('c_notes').innerText = row.notes || 'None';
+    var historyLink = document.getElementById('c_history_link');
+    if (historyLink) {
+        historyLink.href = 'patient_history.php?patient_id=' + row.id;
+    }
     document.getElementById('start_patient_id').value = row.id;
     document.getElementById('finish_patient_id').value = row.id;
     var referPid = document.getElementById('refer_patient_id');

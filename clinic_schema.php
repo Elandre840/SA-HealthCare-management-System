@@ -266,6 +266,20 @@ function cs_build_patient_filters($conn, array $opts, $statusCol = 'status') {
 
     }
 
+    $statusNotIn = $opts['status_not_in'] ?? null;
+
+    if (is_array($statusNotIn) && count($statusNotIn) > 0) {
+
+        $parts = array_map(function ($v) use ($conn) {
+
+            return "'" . cs_esc($conn, $v) . "'";
+
+        }, $statusNotIn);
+
+        $extra .= " AND $statusCol NOT IN (" . implode(',', $parts) . ")";
+
+    }
+
 
 
     return $extra;
@@ -1694,6 +1708,92 @@ function cs_fetch_doctor_medi_alerts($conn, $doctorId, $province, $city, $facili
 
 
 
+function cs_doctor_stage_statuses() {
+
+    return ['Waiting_Doctor', 'With Doctor', 'Consulting'];
+
+}
+
+
+
+function cs_nurse_active_statuses() {
+
+    return ['With Nurse', 'Waiting_Doctor', 'With Doctor', 'Consulting', 'Waiting_Pharmacy'];
+
+}
+
+
+
+function cs_pharmacy_stage_statuses() {
+
+    return ['Waiting_Pharmacy', 'Prescription_Ready'];
+
+}
+
+
+
+function cs_can_role_view_patient_history($role, $patientStatus) {
+
+    $role = strtolower(trim((string)$role));
+
+    $status = trim((string)$patientStatus);
+
+    if ($role === 'doctor') {
+
+        return in_array($status, cs_doctor_stage_statuses(), true);
+
+    }
+
+    if ($role === 'nurse') {
+
+        return in_array($status, cs_nurse_active_statuses(), true);
+
+    }
+
+    return false;
+
+}
+
+
+
+function cs_can_role_consult_patient($role, $patientStatus) {
+
+    return strtolower(trim((string)$role)) === 'doctor'
+
+        && in_array(trim((string)$patientStatus), cs_doctor_stage_statuses(), true);
+
+}
+
+
+
+function cs_can_pharmacist_dispense($patientStatus) {
+
+    return in_array(trim((string)$patientStatus), cs_pharmacy_stage_statuses(), true);
+
+}
+
+
+
+function cs_ensure_consultation_patient_id($conn) {
+
+    if (!cs_table_exists($conn, 'consultations')) {
+
+        return false;
+
+    }
+
+    if (!cs_column_exists($conn, 'consultations', 'patient_id')) {
+
+        return mysqli_query($conn, "ALTER TABLE consultations ADD COLUMN patient_id INT(11) DEFAULT NULL AFTER doctor_id");
+
+    }
+
+    return true;
+
+}
+
+
+
 function cs_save_consultation($conn, $patientId, $doctorUserId, $diagnosis, $treatment, $notes, $facilityId = 0) {
 
     if (!cs_table_exists($conn, 'consultations')) {
@@ -1703,6 +1803,12 @@ function cs_save_consultation($conn, $patientId, $doctorUserId, $diagnosis, $tre
     }
 
 
+
+    cs_ensure_consultation_patient_id($conn);
+
+
+
+    $pid = (int)$patientId;
 
     $duid = (int)$doctorUserId;
 
@@ -1752,13 +1858,403 @@ function cs_save_consultation($conn, $patientId, $doctorUserId, $diagnosis, $tre
 
 
 
+    $patientSql = $pid > 0 ? ", patient_id" : "";
+
+    $patientVal = $pid > 0 ? ", $pid" : "";
+
+
+
     return mysqli_query($conn, "
 
-        INSERT INTO consultations (appointment_id, doctor_id, diagnosis, treatment, notes)
+        INSERT INTO consultations (appointment_id, doctor_id$patientSql, diagnosis, treatment, notes)
 
-        VALUES (NULL, $duid, '$dx', '$tx', '$nt')
+        VALUES (NULL, $duid$patientVal, '$dx', '$tx', '$nt')
 
     ");
+
+}
+
+
+
+function cs_fetch_patient_medical_history($conn, $facilityId, $patientId) {
+
+    $pid = cs_validate_patient_user($conn, (int)$facilityId, (int)$patientId);
+
+    if ($pid <= 0) {
+
+        return [];
+
+    }
+
+
+
+    $records = [];
+
+
+
+    if (cs_table_exists($conn, 'patient_medical_records')) {
+
+        $q = mysqli_query($conn, "
+
+            SELECT mr.*, " . cs_staff_name_sql('d') . " AS doctor_name
+
+            FROM patient_medical_records mr
+
+            LEFT JOIN users d ON d.user_id = mr.doctor_id
+
+            WHERE mr.patient_id = $pid
+
+            ORDER BY mr.visit_date DESC
+
+        ");
+
+        if ($q) {
+
+            while ($row = mysqli_fetch_assoc($q)) {
+
+                $records[] = $row;
+
+            }
+
+        }
+
+    }
+
+
+
+    cs_ensure_consultation_patient_id($conn);
+
+
+
+    if (cs_table_exists($conn, 'consultations') && cs_column_exists($conn, 'consultations', 'patient_id')) {
+
+        $q = mysqli_query($conn, "
+
+            SELECT
+
+                c.consultation_id,
+
+                c.created_at AS visit_date,
+
+                'Consultation' AS visit_type,
+
+                c.diagnosis,
+
+                c.treatment AS prescription,
+
+                c.notes AS follow_up_notes,
+
+                'Completed' AS status,
+
+                '' AS symptoms,
+
+                '' AS allergies,
+
+                '' AS chronic_conditions,
+
+                '' AS treatment_plan,
+
+                '' AS follow_up_date,
+
+                '' AS medication,
+
+                '' AS vitals,
+
+                " . cs_staff_name_sql('d') . " AS doctor_name
+
+            FROM consultations c
+
+            LEFT JOIN users d ON d.user_id = c.doctor_id AND d.account_type = 'staff'
+
+            WHERE c.patient_id = $pid
+
+            ORDER BY c.created_at DESC
+
+        ");
+
+        if ($q) {
+
+            while ($row = mysqli_fetch_assoc($q)) {
+
+                $records[] = $row;
+
+            }
+
+        }
+
+    }
+
+
+
+    if (empty($records) && cs_table_exists($conn, 'users')) {
+
+        $notesExpr  = cs_column_exists($conn, 'users', 'notes') ? "IFNULL(u.notes, '')" : "''";
+
+        $dxExpr     = cs_column_exists($conn, 'users', 'diagnosis') ? "IFNULL(u.diagnosis, '')" : "''";
+
+        $rxExpr     = cs_column_exists($conn, 'users', 'prescription') ? "IFNULL(u.prescription, '')" : "''";
+
+        $medExpr    = cs_column_exists($conn, 'users', 'medication') ? "IFNULL(u.medication, '')" : "''";
+
+        $statusExpr = cs_column_exists($conn, 'users', 'status') ? "IFNULL(u.status, '')" : "''";
+
+        $bpExpr     = cs_column_exists($conn, 'users', 'bp') ? "IFNULL(u.bp, '')" : "''";
+
+        $tempExpr   = cs_column_exists($conn, 'users', 'temp') ? "IFNULL(u.temp, '')" : "''";
+
+        $pulseExpr  = cs_column_exists($conn, 'users', 'pulse') ? "IFNULL(u.pulse, '')" : "''";
+
+        $weightExpr = cs_column_exists($conn, 'users', 'weight') ? "IFNULL(u.weight, '')" : "''";
+
+
+
+        $pq = mysqli_query($conn, "
+
+            SELECT
+
+                u.created_at AS visit_date,
+
+                $dxExpr AS diagnosis,
+
+                $rxExpr AS prescription,
+
+                $medExpr AS medication,
+
+                $notesExpr AS follow_up_notes,
+
+                $statusExpr AS status,
+
+                $bpExpr AS bp,
+
+                $tempExpr AS temp,
+
+                $pulseExpr AS pulse,
+
+                $weightExpr AS weight
+
+            FROM users u
+
+            WHERE u.user_id = $pid AND u.account_type = 'patient'
+
+            LIMIT 1
+
+        ");
+
+
+
+        if ($pq && mysqli_num_rows($pq) > 0) {
+
+            $row = mysqli_fetch_assoc($pq);
+
+            $hasClinical = trim((string)($row['diagnosis'] ?? '')) !== ''
+
+                || trim((string)($row['prescription'] ?? '')) !== ''
+
+                || trim((string)($row['medication'] ?? '')) !== ''
+
+                || trim((string)($row['follow_up_notes'] ?? '')) !== '';
+
+
+
+            if ($hasClinical) {
+
+                $vitals = [];
+
+                foreach (['bp' => 'BP', 'temp' => 'Temp', 'pulse' => 'Pulse', 'weight' => 'Weight'] as $key => $label) {
+
+                    if (trim((string)($row[$key] ?? '')) !== '') {
+
+                        $vitals[] = $label . ' ' . $row[$key];
+
+                    }
+
+                }
+
+
+
+                $records[] = [
+
+                    'visit_date' => $row['visit_date'],
+
+                    'visit_type' => 'Visit',
+
+                    'doctor_name' => '',
+
+                    'diagnosis' => $row['diagnosis'] ?? '',
+
+                    'prescription' => $row['prescription'] ?? '',
+
+                    'medication' => $row['medication'] ?? '',
+
+                    'vitals' => implode(' / ', $vitals),
+
+                    'symptoms' => '',
+
+                    'allergies' => '',
+
+                    'chronic_conditions' => '',
+
+                    'treatment_plan' => '',
+
+                    'follow_up_date' => '',
+
+                    'follow_up_notes' => $row['follow_up_notes'] ?? '',
+
+                    'status' => $row['status'] ?? '',
+
+                ];
+
+            }
+
+        }
+
+    }
+
+
+
+    return $records;
+
+}
+
+
+
+function cs_fetch_patient_prescription_history($conn, $facilityId, $patientId) {
+
+    $pid = cs_validate_patient_user($conn, (int)$facilityId, (int)$patientId);
+
+    if ($pid <= 0) {
+
+        return [];
+
+    }
+
+
+
+    $entries = [];
+
+
+
+    cs_ensure_consultation_patient_id($conn);
+
+
+
+    if (cs_table_exists($conn, 'consultations') && cs_column_exists($conn, 'consultations', 'patient_id')) {
+
+        $q = mysqli_query($conn, "
+
+            SELECT c.created_at, c.treatment AS prescription, c.notes
+
+            FROM consultations c
+
+            WHERE c.patient_id = $pid
+
+              AND TRIM(IFNULL(c.treatment, '')) <> ''
+
+            ORDER BY c.created_at DESC
+
+        ");
+
+        if ($q) {
+
+            while ($row = mysqli_fetch_assoc($q)) {
+
+                $entries[] = [
+
+                    'date' => $row['created_at'],
+
+                    'prescription' => $row['prescription'] ?? '',
+
+                    'medication' => '',
+
+                    'notes' => $row['notes'] ?? '',
+
+                ];
+
+            }
+
+        }
+
+    }
+
+
+
+    if (cs_table_exists($conn, 'users')) {
+
+        $rxExpr  = cs_column_exists($conn, 'users', 'prescription') ? "IFNULL(u.prescription, '')" : "''";
+
+        $medExpr = cs_column_exists($conn, 'users', 'medication') ? "IFNULL(u.medication, '')" : "''";
+
+        $notesExpr = cs_column_exists($conn, 'users', 'notes') ? "IFNULL(u.notes, '')" : "''";
+
+
+
+        $pq = mysqli_query($conn, "
+
+            SELECT u.created_at, $rxExpr AS prescription, $medExpr AS medication, $notesExpr AS notes
+
+            FROM users u
+
+            WHERE u.user_id = $pid AND u.account_type = 'patient'
+
+            LIMIT 1
+
+        ");
+
+
+
+        if ($pq && mysqli_num_rows($pq) > 0) {
+
+            $row = mysqli_fetch_assoc($pq);
+
+            $hasRx = trim((string)($row['prescription'] ?? '')) !== ''
+
+                || trim((string)($row['medication'] ?? '')) !== '';
+
+
+
+            if ($hasRx) {
+
+                $duplicate = false;
+
+                foreach ($entries as $entry) {
+
+                    if (trim((string)$entry['prescription']) === trim((string)($row['prescription'] ?? ''))
+
+                        && trim((string)$entry['medication']) === trim((string)($row['medication'] ?? ''))) {
+
+                        $duplicate = true;
+
+                        break;
+
+                    }
+
+                }
+
+                if (!$duplicate) {
+
+                    array_unshift($entries, [
+
+                        'date' => $row['created_at'],
+
+                        'prescription' => $row['prescription'] ?? '',
+
+                        'medication' => $row['medication'] ?? '',
+
+                        'notes' => $row['notes'] ?? '',
+
+                    ]);
+
+                }
+
+            }
+
+        }
+
+    }
+
+
+
+    return $entries;
 
 }
 
@@ -1994,13 +2490,15 @@ function cs_add_referral($conn, $facilityId, $patientId, $doctorId, $toFacilityI
 
     if ($cid <= 0 && cs_table_exists($conn, 'consultations')) {
 
+        cs_ensure_consultation_patient_id($conn);
+
         $consultNotes = cs_esc($conn, 'Referral initiated: ' . $details);
 
         $consultOk = mysqli_query($conn, "
 
-            INSERT INTO consultations (appointment_id, doctor_id, diagnosis, treatment, notes)
+            INSERT INTO consultations (appointment_id, doctor_id, patient_id, diagnosis, treatment, notes)
 
-            VALUES (NULL, $duid, 'Pending — referral', 'Referral', '$consultNotes')
+            VALUES (NULL, $duid, $pid, 'Pending — referral', 'Referral', '$consultNotes')
 
         ");
 

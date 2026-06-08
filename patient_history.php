@@ -13,7 +13,10 @@ if(function_exists('require_login')){
     }
 }
 
-if(($_SESSION['role'] ?? '') !== 'doctor'){
+$currentRole = strtolower(trim((string)($_SESSION['role'] ?? '')));
+$allowedRoles = ['doctor', 'nurse'];
+
+if(!in_array($currentRole, $allowedRoles, true)){
     header('Location: login.php');
     exit;
 }
@@ -23,24 +26,23 @@ include_once 'clinic_schema.php';
 $province    = $_SESSION['province'] ?? '';
 $city        = $_SESSION['city'] ?? '';
 $facility    = $_SESSION['facility'] ?? '';
-$currentRole = $_SESSION['role'] ?? 'doctor';
-$doctorName  = $_SESSION['name'] ?? 'Doctor';
 $facilityId  = cs_facility_id($conn, $province, $city, $facility);
-
-function table_exists($conn, $table){
-    $table = mysqli_real_escape_string($conn, $table);
-    $q = mysqli_query($conn, "SHOW TABLES LIKE '$table'");
-    return $q && mysqli_num_rows($q) > 0;
-}
 
 function h($value){
     return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
 }
 
+$backLinks = [
+    'doctor' => 'doctor.php?tab=patients',
+    'nurse' => 'nurse.php?tab=patients',
+];
+$backLink = $backLinks[$currentRole] ?? 'login.php';
+
 $patientId = (int)($_GET['patient_id'] ?? 0);
 $patient   = null;
 $records   = [];
 $referrals = [];
+$accessDenied = false;
 
 if($patientId > 0){
     $patientSql = "SELECT u.user_id AS id, u.full_name, "
@@ -57,22 +59,15 @@ if($patientId > 0){
     }
 }
 
-if($patient && table_exists($conn, 'patient_medical_records')){
-    $recordsSql = "SELECT mr.*, CONCAT(d.name, IFNULL(CONCAT(' ', d.surname), '')) AS doctor_name "
-        . "FROM patient_medical_records mr "
-        . "LEFT JOIN users d ON d.id = mr.doctor_id "
-        . "WHERE mr.patient_id = $patientId "
-        . "ORDER BY mr.visit_date DESC";
-    $rq = mysqli_query($conn, $recordsSql);
-    if($rq){
-        while($row = mysqli_fetch_assoc($rq)){
-            $records[] = $row;
+if($patient){
+    if(!cs_can_role_view_patient_history($currentRole, $patient['status'])){
+        $accessDenied = true;
+    } else {
+        $records = cs_fetch_patient_medical_history($conn, $facilityId, $patientId);
+        if($currentRole === 'doctor' && cs_referrals_supported($conn)){
+            $referrals = cs_fetch_patient_referrals($conn, $facilityId, $patientId);
         }
     }
-}
-
-if($patient && cs_referrals_supported($conn)){
-    $referrals = cs_fetch_patient_referrals($conn, $facilityId, $patientId);
 }
 
 ?>
@@ -110,6 +105,7 @@ if($patient && cs_referrals_supported($conn)){
         .record-card{ background:#ffffff; border:1px solid #e5e7eb; border-radius:16px; padding:18px; margin-bottom:14px; }
         .record-card strong{ display:block; margin-bottom:8px; }
         .field-row{ margin-top:8px; }
+        .alert{ padding:14px 16px; border-radius:12px; background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; }
     </style>
 </head>
 <body>
@@ -117,15 +113,24 @@ if($patient && cs_referrals_supported($conn)){
         <div class="topbar">
             <div>
                 <h1>Patient Medical History</h1>
-                <div class="muted">Full visit records and referrals for the patient.</div>
+                <div class="muted">Full visit records<?= $currentRole === 'doctor' ? ' and referrals' : '' ?> for the patient.</div>
             </div>
-            <a href="doctor.php?tab=patients" class="btn secondary">← Back to Patients</a>
+            <a href="<?= h($backLink) ?>" class="btn secondary">← Back</a>
         </div>
 
         <?php if(!$patient): ?>
             <div class="card">
                 <h2 class="muted">Patient not found</h2>
                 <p>The patient ID is missing or invalid, or the patient does not belong to your facility.</p>
+            </div>
+        <?php elseif($accessDenied): ?>
+            <div class="card">
+                <div class="alert">
+                    This patient's medical record is not available at their current workflow stage.
+                    <?php if($currentRole === 'doctor'): ?>
+                    Completed patients are managed by reception. Re-admit the patient to the doctor queue to view their record.
+                    <?php endif; ?>
+                </div>
             </div>
         <?php else: ?>
             <div class="card">
@@ -170,6 +175,12 @@ if($patient && cs_referrals_supported($conn)){
                             <div class="field-row"><strong>Doctor:</strong> <?= h($record['doctor_name'] ?: 'Unknown') ?></div>
                             <div class="field-row"><strong>Diagnosis:</strong> <?= h($record['diagnosis'] ?: '-') ?></div>
                             <div class="field-row"><strong>Prescription:</strong> <?= h($record['prescription'] ?: '-') ?></div>
+                            <?php if(!empty($record['medication'])): ?>
+                            <div class="field-row"><strong>Medication Dispensed:</strong> <?= h($record['medication']) ?></div>
+                            <?php endif; ?>
+                            <?php if(!empty($record['vitals'])): ?>
+                            <div class="field-row"><strong>Vitals:</strong> <?= h($record['vitals']) ?></div>
+                            <?php endif; ?>
                             <div class="field-row"><strong>Symptoms:</strong> <?= h($record['symptoms'] ?: '-') ?></div>
                             <div class="field-row"><strong>Allergies:</strong> <?= h($record['allergies'] ?: '-') ?></div>
                             <div class="field-row"><strong>Chronic Conditions:</strong> <?= h($record['chronic_conditions'] ?: '-') ?></div>
@@ -182,6 +193,7 @@ if($patient && cs_referrals_supported($conn)){
                 <?php endif; ?>
             </div>
 
+            <?php if($currentRole === 'doctor'): ?>
             <div class="card">
                 <div class="sectionTitle">
                     <div>
@@ -204,6 +216,7 @@ if($patient && cs_referrals_supported($conn)){
                     <?php endforeach; ?>
                 <?php endif; ?>
             </div>
+            <?php endif; ?>
         <?php endif; ?>
     </div>
 </body>

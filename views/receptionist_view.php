@@ -1,6 +1,13 @@
 <?php
-$patientList = cs_fetch_patients($conn, $facilityId, ['search' => $search]);
-$queuePatients = cs_fetch_patients($conn, $facilityId, ['order' => 'id ASC']);
+$patientListOpts = ['search' => $search, 'order' => 'full_name ASC'];
+if ($search === '') {
+    $patientListOpts['status_not_in'] = ['Completed'];
+}
+$patientList = cs_fetch_patients($conn, $facilityId, $patientListOpts);
+$queuePatients = cs_fetch_patients($conn, $facilityId, [
+    'status_not_in' => ['Completed'],
+    'order' => 'id ASC',
+]);
 $appointmentDate = $_GET['filter_date'] ?? date('Y-m-d');
 $apptSearch = trim($_GET['appt_search'] ?? $_GET['search'] ?? '');
 $appointmentRows = cs_fetch_appointments($conn, $facilityId, [
@@ -246,6 +253,7 @@ $allPatients = cs_fetch_patients($conn, $facilityId, ['limit' => 200]);
 <?php if ($tab === 'patients'): ?>
 
         <h2 class="section-title">Patient Registration</h2>
+        <p class="muted" style="margin:-12px 0 18px;">Active patients are listed below. Search by name or ID to find completed visits and re-admit them to the workflow.</p>
 
         <div class="dash-panel patients-panel">
             <form method="GET" class="filterBar">

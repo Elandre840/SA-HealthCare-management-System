@@ -95,6 +95,7 @@ CREATE TABLE `consultations` (
   `consultation_id` int(11) NOT NULL,
   `appointment_id` int(11) DEFAULT NULL,
   `doctor_id` int(11) NOT NULL,
+  `patient_id` int(11) DEFAULT NULL,
   `diagnosis` text DEFAULT NULL,
   `treatment` text DEFAULT NULL,
   `notes` text DEFAULT NULL,

@@ -113,17 +113,17 @@ clinic_system/
 
 ## Screenshots
 
-| Login | Reception dashboard |
-|-------|---------------------|
-| ![Login](assets/screenshots/Screenshot%202026-06-07%20203450.png) | ![Reception](assets/screenshots/Screenshot%202026-06-07%20203501.png) |
+| Reception registration | Reception queue |
+|------------------------|-----------------|
+| ![Reception](assets/screenshots/1_reception.png) | ![Reception queue](assets/screenshots/2_reception.png) |
 
 | Nurse workflow | Doctor consultation |
 |----------------|---------------------|
-| ![Nurse](assets/screenshots/Screenshot%202026-06-07%20203606.png) | ![Doctor](assets/screenshots/Screenshot%202026-06-07%20203635.png) |
+| ![Nurse](assets/screenshots/10_nurse.png) | ![Doctor](assets/screenshots/20_doctor.png) |
 
-| Pharmacy | Reports |
-|----------|---------|
-| ![Pharmacy](assets/screenshots/Screenshot%202026-06-07%20203705.png) | ![Reports](assets/screenshots/Screenshot%202026-06-07%20203851.png) |
+| Pharmacy dispensing | Patient medical history |
+|-----------------------|-------------------------|
+| ![Pharmacy](assets/screenshots/32_pharmacist.png) | ![Medical history](assets/screenshots/24_doctor.png) |
 
 More screenshots are available in `assets/screenshots/`.
 
