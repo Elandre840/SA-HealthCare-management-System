@@ -14,3 +14,7 @@ logs/*.log
 # Environment overrides (if added later)
 .env
 db.local.php
+
+# Demo video build artifacts
+video/node_modules/
+video/output/tmp/

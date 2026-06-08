@@ -1,0 +1,18 @@
+{
+  "projectName": "SA Healthcare Management System",
+  "outputPrefix": "clinic_demo",
+  "voice": "en-GB-SoniaNeural",
+  "targetSeconds": 60,
+  "endCard": {
+    "title": "SA Healthcare Management System",
+    "subtitle": "PHP · MySQL · Role-based clinic workflow",
+    "link": "github.com/Elandre840/SA-HealthCare-management-System",
+    "gradientStart": "#0f3d2e",
+    "gradientEnd": "#1a5c40",
+    "accent": "#7dffb3"
+  },
+  "theme": {
+    "background": { "r": 10, "g": 46, "b": 34 },
+    "captionBar": "#0a2e22"
+  }
+}
