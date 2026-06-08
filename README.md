@@ -27,7 +27,7 @@ Built a single web platform where each role sees only what they need, scoped to 
 | Challenge | Approach |
 |-----------|----------|
 | Multiple roles, one database | Unified `users` table with `account_type` and role-based routing after login |
-| Multi-facility demo data | Facility-scoped queries and province-themed UI via `config_geo.php` |
+| Multi-facility demo data | Facility-scoped queries and province-themed UI via `ui_theme.php` |
 | Emergency escalation | Nurse/doctor triage triggers in-app announcements plus email/SMS logging pipeline |
 | Readable dashboards | Chart.js reporting, KPI cards, and print-friendly report views |
 
@@ -102,7 +102,7 @@ clinic_system/
 ├── pharmacy.php         # Pharmacy dispensing
 ├── clinic_schema.php    # Shared data-access helpers
 ├── medi_alert.php       # Emergency notification helpers
-├── config_geo.php       # Provinces, cities, facilities
+├── ui_theme.php         # Province colour themes
 ├── db.php               # Database connection
 ├── clinic_system_demo_v2.sql
 ├── README.md

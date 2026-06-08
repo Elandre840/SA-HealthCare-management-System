@@ -11,12 +11,6 @@ Desktop.ini
 # Logs (runtime)
 logs/*.log
 
-# Local scratch / debug files
-test2.php
-justincase.php
-just_icase.php
-Create navbar.php
-
 # Environment overrides (if added later)
 .env
 db.local.php

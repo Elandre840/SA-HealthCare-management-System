@@ -169,22 +169,6 @@ Each role has its own dashboard with tabs for patients, queue, announcements, an
 
 ---
 
-## Optional: migration scripts
-
-The repo includes one-off migration scripts used during development. **Fresh installs should use the SQL dump only.**
-
-| File | Purpose |
-|------|---------|
-| `migrate_v2.php` | Schema v2 upgrades |
-| `migrate_emergency_triage.php` | Emergency triage columns |
-| `migrate_users_phase3_fks.php` | User foreign keys |
-| `migrate_users_phase4.php` | User model phase 4 |
-| `migrate_drop_unused.php` | Remove unused tables |
-
-Run these only if you are upgrading an older local database — not needed after importing `clinic_system_demo_v2.sql`.
-
----
-
 ## Security reminder
 
 This project uses demo credentials and simplified security for portfolio demonstration. Before any real deployment:
