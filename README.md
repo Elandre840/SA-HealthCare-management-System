@@ -4,6 +4,31 @@ End-to-end healthcare workflow app for South African clinics — registration, t
 
 **Repository:** [github.com/Elandre840/SA-HealthCare-management-System](https://github.com/Elandre840/SA-HealthCare-management-System)
 
+**Project owner:** Mj Technologies  
+**Developer:** Elandre Booth
+
+---
+
+## Current Project Status
+
+The original PHP/XAMPP version is still kept in place because it works for demos, screenshots, design reference, and submissions.
+
+A new production-style rebuild has also been started beside it:
+
+- `clinical-hms-api/` — FastAPI backend with SQLAlchemy, JWT auth, Alembic migrations, Docker/PostgreSQL config, Redis placeholder, and seeded demo staff accounts.
+- `clinical-hms-web/` — React/TypeScript frontend with Vite, Tailwind CSS, login page, protected routes, role-based dashboard placeholders, and token refresh support.
+
+The rebuild is not replacing the PHP app in one step. It is being built module by module so the team can keep using the current working system while the scalable version grows.
+
+### Rebuild Architecture (FastAPI)
+
+```text
+React frontend  →  FastAPI API routes  →  Services  →  PostgreSQL
+(clinical-hms-web)   (clinical-hms-api)              (Docker / SQLite)
+```
+
+See [clinical-hms-api/README.md](clinical-hms-api/README.md) for Docker setup, demo accounts, and backend architecture details.
+
 ---
 
 ## Overview
@@ -54,11 +79,21 @@ Prepared statements across all queries · bcrypt-only demo passwords · admin da
 
 ## Tech Stack
 
+### Current Working Demo
+
 - **Backend:** PHP 8.x
 - **Database:** MySQL / MariaDB
 - **Frontend:** HTML, CSS, JavaScript
 - **Charts:** Chart.js
 - **Local server:** XAMPP (Apache + MySQL)
+
+### New Rebuild In Progress
+
+- **API:** FastAPI, SQLAlchemy, Pydantic, Alembic
+- **Frontend:** React, TypeScript, Vite, Tailwind CSS
+- **Auth:** JWT access + refresh tokens
+- **Database:** SQLite for quick local testing, PostgreSQL through Docker for the production-style setup
+- **Future infrastructure:** Redis for sessions, caching, rate limiting, and background tasks
 
 ---
 
@@ -92,6 +127,8 @@ clinic_system/
 │   ├── backgrounds/     # UI backgrounds
 │   ├── emblems/         # Province emblems
 │   └── screenshots/     # Portfolio screenshots
+├── clinical-hms-api/    # New FastAPI backend rebuild
+├── clinical-hms-web/    # New React/TypeScript frontend rebuild
 ├── views/               # Shared staff UI partials
 ├── login.php            # Entry point + role routing
 ├── index.php            # Redirects to login
@@ -145,13 +182,14 @@ More screenshots are available in `assets/screenshots/`.
 - **Portfolio / demo use only** — not intended for production healthcare without security hardening.
 - Demo passwords are plain text by design for easy local testing.
 - Do not commit real credentials or patient data.
+- The new rebuild currently supports authentication and role dashboard placeholders. Patient workflow modules are the next major build step.
 
 ---
 
-## Author
+## Ownership
 
-**Elandre Booth**  
-Software Developer | Systems Builder
+**Owner:** Mj Technologies  
+**Developer:** Elandre Booth
 
 If you are reviewing this project for collaboration, feedback, or opportunities, feel free to connect via GitHub.
 
