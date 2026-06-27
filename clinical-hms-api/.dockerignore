@@ -1,0 +1,33 @@
+# Git
+.git
+.gitignore
+
+# Environment files — passed in at runtime via docker-compose env_file, not baked into the image
+.env
+.env.*
+
+# Python runtime artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+
+# Test suite and artifacts
+tests/
+.pytest_cache/
+*.db
+*.sqlite
+*.sqlite3
+
+# Editor / OS
+.vscode/
+.idea/
+.cursor/
+.DS_Store
+
+# Docs and local config
+README.md
+.claude/

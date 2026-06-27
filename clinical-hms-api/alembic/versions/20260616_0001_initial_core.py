@@ -24,9 +24,6 @@ staff_role = sa.Enum(
 
 
 def upgrade() -> None:
-    account_type.create(op.get_bind(), checkfirst=True)
-    staff_role.create(op.get_bind(), checkfirst=True)
-
     op.create_table(
         "facilities",
         sa.Column("id", sa.Integer(), nullable=False),

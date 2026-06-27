@@ -6,10 +6,9 @@ from sqlalchemy import select
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from app.core.security import hash_password
-from app.db.base import Base
 from app.db.models import Facility, User
 from app.db.models.user import AccountType, StaffRole
-from app.db.session import SessionLocal, engine
+from app.db.session import SessionLocal
 
 
 DEMO_PASSWORD = "Password123!"
@@ -81,7 +80,6 @@ def get_or_create_demo_facility() -> Facility:
 
 
 def seed_demo_users() -> None:
-    Base.metadata.create_all(bind=engine)
     facility = get_or_create_demo_facility()
 
     with SessionLocal() as db:

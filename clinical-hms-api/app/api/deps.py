@@ -1,7 +1,7 @@
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.core.security import decode_token
@@ -11,8 +11,20 @@ from app.services.auth_service import get_user_by_id
 
 
 DbSession = Annotated[Session, Depends(get_db)]
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
-BearerToken = Annotated[str, Depends(oauth2_scheme)]
+
+# HTTPBearer shows a plain token field in Swagger UI ("Authorize → Bearer token").
+# OAuth2PasswordBearer would tell Swagger to POST form-encoded credentials to the
+# login endpoint, but that endpoint expects JSON — causing a 422 in Swagger only.
+_bearer_scheme = HTTPBearer(auto_error=False)
+
+
+def _get_bearer_token(
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer_scheme)],
+) -> str | None:
+    return credentials.credentials if credentials else None
+
+
+BearerToken = Annotated[str | None, Depends(_get_bearer_token)]
 
 
 def get_current_user(db: DbSession, token: BearerToken) -> User:

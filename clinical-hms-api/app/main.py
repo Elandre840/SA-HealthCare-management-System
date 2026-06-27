@@ -17,6 +17,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(health.router, tags=["health"])
-app.include_router(auth.router, prefix="/auth", tags=["auth"])
-app.include_router(facilities.router, prefix="/facilities", tags=["facilities"])
+app.include_router(health.router, tags=["health"])  # /health stays at root for Docker/infra
+app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
+app.include_router(facilities.router, prefix="/api/v1/facilities", tags=["facilities"])

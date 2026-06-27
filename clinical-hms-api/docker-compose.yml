@@ -52,6 +52,24 @@ services:
       timeout: 5s
       retries: 5
 
+  web:
+    build:
+      context: ../clinical-hms-web
+    container_name: clinical_hms_web
+    environment:
+      # VITE_API_BASE_URL must be the address the *browser* uses — not the Docker
+      # network hostname — because Vite builds a static SPA; API calls go from the
+      # user's browser to localhost:8000, not from container to container.
+      VITE_API_BASE_URL: http://localhost:8000/api/v1
+    ports:
+      - "5173:5173"
+    volumes:
+      - ../clinical-hms-web:/app
+      # Prevent the host directory from overwriting node_modules installed in the image.
+      - /app/node_modules
+    depends_on:
+      - api
+
 volumes:
   # Named volume for PostgreSQL persistent storage.
   postgres_data:

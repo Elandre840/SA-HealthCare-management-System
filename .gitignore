@@ -15,6 +15,7 @@ logs/*.log
 node_modules/
 dist/
 dist-ssr/
+*.local
 
 # Python
 __pycache__/
@@ -24,10 +25,13 @@ venv/
 *.db
 *.sqlite
 *.sqlite3
+.pytest_cache/
 
 # Environment overrides (never commit local secrets or machine config)
 .env
 .env.*
 !.env.example
 !.env.*.example
-db.local.php
+
+# Claude Code — local settings are machine-specific
+.claude/settings.local.json
