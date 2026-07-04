@@ -64,6 +64,10 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
 def require_roles(*roles: StaffRole):
+    # Factory that returns a FastAPI dependency — this is the pattern for
+    # parameterised guards. Usage on a route:
+    #   DoctorOrAdmin = Annotated[User, Depends(require_roles(StaffRole.doctor, StaffRole.admin))]
+    # Add the type alias to this file and use it as a route parameter type.
     def _require_role(current_user: CurrentUser) -> User:
         if current_user.role not in roles:
             raise HTTPException(

@@ -8,6 +8,9 @@ from app.db.base import Base
 
 
 class AccountType(str, enum.Enum):
+    # Distinguishes staff (clinic employees with a role) from patients.
+    # Patients are managed via the Patient model; this enum is here so that a
+    # single users table can hold both if a future patient portal is needed.
     staff = "staff"
     patient = "patient"
 
@@ -32,6 +35,8 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(150), unique=True, index=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     employee_number: Mapped[str | None] = mapped_column(String(50), unique=True)
+    # role is None for patient accounts — only staff accounts carry a role.
+    # Always check role before acting on it in service code.
     role: Mapped[StaffRole | None] = mapped_column(Enum(StaffRole))
     status: Mapped[str] = mapped_column(String(50), default="Waiting", nullable=False)
     department: Mapped[str] = mapped_column(String(50), default="Reception", nullable=False)

@@ -50,6 +50,10 @@ def get_me(current_user: CurrentUser) -> UserOut:
 
 @router.post("/refresh", response_model=TokenResponse)
 def refresh_token(refresh_in: RefreshRequest, db: DbSession) -> TokenResponse:
+    # TODO: Refresh tokens are currently not invalidated after use. A stolen
+    # refresh token can be replayed indefinitely until it expires (7 days).
+    # Fix: store issued refresh token IDs in Redis and reject any token whose ID
+    # is not in the set. On refresh, delete the old ID and insert the new one.
     subject = decode_token(refresh_in.refresh_token, expected_type="refresh")
 
     if subject is None:

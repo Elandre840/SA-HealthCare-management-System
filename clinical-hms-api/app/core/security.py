@@ -8,7 +8,10 @@ from app.core.config import settings
 
 ALGORITHM = "HS256"
 
-
+# bcrypt is intentionally slow (cost factor 12 by default) to make offline
+# brute-force attacks expensive. gensalt() embeds both the cost factor and a
+# random salt in the returned hash string, so verify only needs the plain text
+# and the stored string — no separate salt column required.
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
@@ -18,6 +21,9 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 def create_token(subject: str, expires_delta: timedelta, token_type: str) -> str:
+    # "typ" is a custom claim that distinguishes access tokens from refresh tokens.
+    # Both are signed with the same key, so without this check a client could
+    # send a refresh token to a protected endpoint and get a 200 instead of 401.
     expires_at = datetime.now(timezone.utc) + expires_delta
     payload = {"sub": subject, "exp": expires_at, "typ": token_type}
     return jwt.encode(payload, settings.secret_key, algorithm=ALGORITHM)

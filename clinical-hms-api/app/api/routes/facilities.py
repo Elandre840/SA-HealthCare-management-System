@@ -9,6 +9,10 @@ from app.schemas.facility import FacilityCreate, FacilityOut
 router = APIRouter()
 
 
+# TODO: Both endpoints are currently open — no authentication required.
+# Before this goes beyond localhost, add CurrentUser to create_facility so only
+# admins can register new facilities, and decide whether list_facilities should
+# be restricted to authenticated users only.
 @router.post("/", response_model=FacilityOut, status_code=status.HTTP_201_CREATED)
 def create_facility(facility_in: FacilityCreate, db: DbSession) -> FacilityOut:
     facility = Facility(**facility_in.model_dump())

@@ -5,6 +5,9 @@ from sqlalchemy import engine_from_config, pool
 
 from app.core.config import settings
 from app.db.base import Base
+# All model modules must be imported here so SQLAlchemy's metadata is populated
+# before Alembic generates or runs migrations. Forgetting to import a new model
+# causes autogenerate to produce a migration that drops its table.
 from app.db.models import Facility, Patient, User, Visit, Vitals
 
 config = context.config

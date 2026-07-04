@@ -8,6 +8,9 @@ type ApiClientOptions = {
   onUnauthorized: () => void
 }
 
+// All paths passed to request() or authenticatedRequest() are relative to
+// API_BASE_URL and must NOT repeat the /api/v1 segment — it is already
+// in the base URL. E.g. use '/auth/login', not '/api/v1/auth/login'.
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api/v1'
 
 export class ApiError extends Error {
@@ -91,8 +94,9 @@ export function createApiClient(options: ApiClientOptions) {
       }
 
       try {
-        // If an access token expires, refresh once and retry the original
-        // protected request so the user stays signed in during normal work.
+        // On a 401, try refreshing the access token once before giving up.
+        // This keeps the user signed in across normal shifts without requiring
+        // them to re-login every 60 minutes.
         const tokens = await request<TokenResponse>('/auth/refresh', {
           method: 'POST',
           body: JSON.stringify({ refresh_token: refreshToken }),
@@ -123,10 +127,10 @@ export function createApiClient(options: ApiClientOptions) {
       })
     },
     getTriageQueue() {
-      return authenticatedRequest<TriageQueueItem[]>('/api/v1/triage/queue')
+      return authenticatedRequest<TriageQueueItem[]>('/triage/queue')
     },
     submitVitals(visitId: number, vitals: VitalsCreate) {
-      return authenticatedRequest<void>(`/api/v1/triage/${visitId}/vitals`, {
+      return authenticatedRequest<void>(`/triage/${visitId}/vitals`, {
         method: 'POST',
         body: JSON.stringify(vitals),
       })
