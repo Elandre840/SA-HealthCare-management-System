@@ -13,3 +13,5 @@ class Facility(Base):
     name: Mapped[str] = mapped_column(String(150), nullable=False)
 
     users: Mapped[list["User"]] = relationship(back_populates="facility")
+    patients: Mapped[list["Patient"]] = relationship(back_populates="facility")
+    visits: Mapped[list["Visit"]] = relationship(back_populates="facility")

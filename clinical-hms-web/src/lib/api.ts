@@ -1,4 +1,5 @@
 import type { LoginRequest, TokenResponse, User } from '../types/auth'
+import type { TriageQueueItem, VitalsCreate } from '../types/triage'
 
 type ApiClientOptions = {
   getAccessToken: () => string | null
@@ -119,6 +120,15 @@ export function createApiClient(options: ApiClientOptions) {
     logout() {
       return authenticatedRequest<void>('/auth/logout', {
         method: 'POST',
+      })
+    },
+    getTriageQueue() {
+      return authenticatedRequest<TriageQueueItem[]>('/api/v1/triage/queue')
+    },
+    submitVitals(visitId: number, vitals: VitalsCreate) {
+      return authenticatedRequest<void>(`/api/v1/triage/${visitId}/vitals`, {
+        method: 'POST',
+        body: JSON.stringify(vitals),
       })
     },
     request: authenticatedRequest,

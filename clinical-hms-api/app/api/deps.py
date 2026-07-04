@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.security import decode_token
 from app.db.session import get_db
-from app.db.models.user import User
+from app.db.models.user import StaffRole, User
 from app.services.auth_service import get_user_by_id
 
 
@@ -61,3 +61,18 @@ def get_current_user(db: DbSession, token: BearerToken) -> User:
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+def require_roles(*roles: StaffRole):
+    def _require_role(current_user: CurrentUser) -> User:
+        if current_user.role not in roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have permission to perform this action.",
+            )
+        return current_user
+
+    return _require_role
+
+
+NurseUser = Annotated[User, Depends(require_roles(StaffRole.nurse))]

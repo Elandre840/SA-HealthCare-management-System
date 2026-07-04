@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+@theme {
+  --color-triage-green: #16a34a;
+  --color-triage-yellow: #ca8a04;
+  --color-triage-orange: #ea580c;
+  --color-triage-red: #dc2626;
+}
+
 :root {
   color: #111827;
   background: #f8fafc;

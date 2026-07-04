@@ -9,6 +9,7 @@ from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.dialects.postgresql import ENUM as PgENUM
 
 
 revision: str = "20260616_0001"
@@ -17,13 +18,10 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
-account_type = sa.Enum("staff", "patient", name="accounttype")
-staff_role = sa.Enum(
-    "admin", "reception", "nurse", "doctor", "pharmacist", name="staffrole"
-)
-
-
 def upgrade() -> None:
+    op.execute(sa.text("CREATE TYPE accounttype AS ENUM ('staff', 'patient')"))
+    op.execute(sa.text("CREATE TYPE staffrole AS ENUM ('admin', 'reception', 'nurse', 'doctor', 'pharmacist')"))
+
     op.create_table(
         "facilities",
         sa.Column("id", sa.Integer(), nullable=False),
@@ -37,7 +35,7 @@ def upgrade() -> None:
     op.create_table(
         "users",
         sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("account_type", account_type, nullable=False),
+        sa.Column("account_type", PgENUM("staff", "patient", name="accounttype", create_type=False), nullable=False),
         sa.Column("first_name", sa.String(length=100), nullable=False),
         sa.Column("surname", sa.String(length=100), nullable=False),
         sa.Column("id_number", sa.String(length=50), nullable=True),
@@ -45,7 +43,7 @@ def upgrade() -> None:
         sa.Column("email", sa.String(length=150), nullable=False),
         sa.Column("hashed_password", sa.String(length=255), nullable=False),
         sa.Column("employee_number", sa.String(length=50), nullable=True),
-        sa.Column("role", staff_role, nullable=True),
+        sa.Column("role", PgENUM("admin", "reception", "nurse", "doctor", "pharmacist", name="staffrole", create_type=False), nullable=True),
         sa.Column("status", sa.String(length=50), nullable=False),
         sa.Column("department", sa.String(length=50), nullable=False),
         sa.Column("notes", sa.Text(), nullable=True),
@@ -74,5 +72,5 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_facilities_id"), table_name="facilities")
     op.drop_table("facilities")
 
-    staff_role.drop(op.get_bind(), checkfirst=True)
-    account_type.drop(op.get_bind(), checkfirst=True)
+    op.execute(sa.text("DROP TYPE IF EXISTS staffrole"))
+    op.execute(sa.text("DROP TYPE IF EXISTS accounttype"))

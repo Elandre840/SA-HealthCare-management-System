@@ -1,4 +1,5 @@
 import sys
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from sqlalchemy import select
@@ -6,8 +7,9 @@ from sqlalchemy import select
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from app.core.security import hash_password
-from app.db.models import Facility, User
+from app.db.models import Facility, Patient, User, Visit
 from app.db.models.user import AccountType, StaffRole
+from app.db.models.visit import VisitStatus
 from app.db.session import SessionLocal
 
 
@@ -55,6 +57,30 @@ DEMO_USERS = [
         "employee_number": "DEMO-PHARMACIST-001",
         "role": StaffRole.pharmacist,
         "department": "Pharmacy",
+    },
+]
+
+DEMO_TRIAGE_PATIENTS = [
+    {
+        "first_name": "Thabo",
+        "surname": "Mokoena",
+        "folder_number": "F-1001",
+        "reason_for_visit": "Fever and cough",
+        "wait_minutes": 45,
+    },
+    {
+        "first_name": "Lerato",
+        "surname": "Nkosi",
+        "folder_number": "F-1002",
+        "reason_for_visit": "Abdominal pain",
+        "wait_minutes": 28,
+    },
+    {
+        "first_name": "Sipho",
+        "surname": "Dlamini",
+        "folder_number": "F-1003",
+        "reason_for_visit": "Follow-up hypertension review",
+        "wait_minutes": 12,
     },
 ]
 
@@ -108,9 +134,58 @@ def seed_demo_users() -> None:
         db.commit()
 
 
+def seed_demo_triage_queue() -> None:
+    facility = get_or_create_demo_facility()
+    now = datetime.now(UTC)
+
+    with SessionLocal() as db:
+        for demo_patient in DEMO_TRIAGE_PATIENTS:
+            existing_patient = db.scalar(
+                select(Patient).where(
+                    Patient.folder_number == demo_patient["folder_number"],
+                    Patient.facility_id == facility.id,
+                )
+            )
+
+            if existing_patient is None:
+                patient = Patient(
+                    first_name=demo_patient["first_name"],
+                    surname=demo_patient["surname"],
+                    folder_number=demo_patient["folder_number"],
+                    facility_id=facility.id,
+                )
+                db.add(patient)
+                db.flush()
+            else:
+                patient = existing_patient
+
+            existing_visit = db.scalar(
+                select(Visit).where(
+                    Visit.patient_id == patient.id,
+                    Visit.status == VisitStatus.awaiting_triage,
+                )
+            )
+
+            if existing_visit is not None:
+                continue
+
+            db.add(
+                Visit(
+                    patient_id=patient.id,
+                    facility_id=facility.id,
+                    reason_for_visit=demo_patient["reason_for_visit"],
+                    status=VisitStatus.awaiting_triage,
+                    checked_in_at=now - timedelta(minutes=demo_patient["wait_minutes"]),
+                )
+            )
+
+        db.commit()
+
+
 if __name__ == "__main__":
     seed_demo_users()
-    print("Seeded demo users.")
+    seed_demo_triage_queue()
+    print("Seeded demo users and triage queue.")
     print(f"Password for all demo users: {DEMO_PASSWORD}")
     for demo_user in DEMO_USERS:
         print(f"- {demo_user['role'].value}: {demo_user['email']}")
