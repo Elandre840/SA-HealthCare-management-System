@@ -6,8 +6,7 @@ alembic
 pydantic-settings
 email-validator
 python-jose[cryptography]
-passlib[bcrypt]
-bcrypt<4.1
+bcrypt
 python-multipart
 
 # Test dependencies
