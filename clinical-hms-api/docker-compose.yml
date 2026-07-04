@@ -1,0 +1,75 @@
+services:
+  # FastAPI backend service — runs the API inside Docker for a production-like setup.
+  # The source folder is mounted so code changes reload during development.
+  api:
+    build: .
+    container_name: clinical_hms_api
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    # API starts only after Postgres is healthy and Redis responds to ping.
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # PostgreSQL database service for production-like local development.
+  # This replaces SQLite when running in a containerized environment.
+  postgres:
+    image: postgres:16
+    container_name: clinical_hms_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      # Persistent database storage so data is not lost when containers stop.
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis is used for caching, background jobs, and future task queues (Celery).
+  redis:
+    image: redis:7
+    container_name: clinical_hms_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: ../clinical-hms-web
+    container_name: clinical_hms_web
+    environment:
+      # VITE_API_BASE_URL must be the address the *browser* uses — not the Docker
+      # network hostname — because Vite builds a static SPA; API calls go from the
+      # user's browser to localhost:8000, not from container to container.
+      VITE_API_BASE_URL: http://localhost:8000/api/v1
+    ports:
+      - "5173:5173"
+    volumes:
+      - ../clinical-hms-web:/app
+      # Prevent the host directory from overwriting node_modules installed in the image.
+      - /app/node_modules
+    depends_on:
+      - api
+
+volumes:
+  # Named volume for PostgreSQL persistent storage.
+  postgres_data:

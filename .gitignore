@@ -11,10 +11,27 @@ Desktop.ini
 # Logs (runtime)
 logs/*.log
 
-# Environment overrides (if added later)
-.env
-db.local.php
+# Node / frontend build artifacts
+node_modules/
+dist/
+dist-ssr/
+*.local
 
-# Demo video build artifacts
-video/node_modules/
-video/output/tmp/
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.db
+*.sqlite
+*.sqlite3
+.pytest_cache/
+
+# Environment overrides (never commit local secrets or machine config)
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Claude Code — local settings are machine-specific
+.claude/settings.local.json

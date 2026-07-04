@@ -1,162 +1,232 @@
 # SA Healthcare Management System
 
-End-to-end healthcare workflow app for South African clinics — registration, triage, consultations, dispensing, and reporting. Built as a **portfolio project** to demonstrate full-stack PHP/MySQL development and real-world system design.
+End-to-end healthcare workflow platform for South African clinics — patient registration, triage, consultations, dispensing, and reporting. Built as a portfolio project demonstrating full-stack system design and progressive modernisation from a PHP prototype to a production-style API + React SPA.
 
-**Repository:** [github.com/Elandre840/SA-HealthCare-management-System](https://github.com/Elandre840/SA-HealthCare-management-System)
-
----
-
-## Overview
-
-A role-based web application that simulates clinic operations from patient arrival through medication dispensing. Staff work across **province → city → facility** locations with dashboards, queue visibility, announcements, emergency triage alerts, and reporting.
-
-**Patient flow:** Reception → Nurse → Doctor → Pharmacist → Completed
+**Repository:** [github.com/Elandre840/SA-HealthCare-management-System](https://github.com/Elandre840/SA-HealthCare-management-System)  
+**Project owner:** Mj Technologies  
+**Developer:** Elandre Booth
 
 ---
 
-## Case Study
+## Project Status
 
-### Problem
-Clinic staff often work in silos — reception, nursing, doctors, and pharmacy each track patients differently. That makes queues hard to monitor, handoffs easy to miss, and reporting slow to produce across multiple sites.
+The PHP prototype has been retired. The repo now contains only the production-style rebuild:
 
-### Solution
-Built a single web platform where each role sees only what they need, scoped to their **province, city, and facility**. Patients move through a defined workflow with live queue visibility, internal announcements, and emergency triage alerts (MediAlert).
-
-### Key challenges & how they were solved
-
-| Challenge | Approach |
-|-----------|----------|
-| Multiple roles, one database | Unified `users` table with `account_type` and role-based routing after login |
-| Multi-facility demo data | Facility-scoped queries and province-themed UI via `ui_theme.php` |
-| Emergency escalation | Nurse/doctor triage triggers in-app announcements plus email/SMS logging pipeline |
-| Readable dashboards | Chart.js reporting, KPI cards, and print-friendly report views |
-
-### Skills demonstrated
-PHP · MySQL · Session-based RBAC · REST-style form workflows · SQL schema design · HTML/CSS/JS · Chart.js · XAMPP local deployment
-
-### Planned improvements
-Prepared statements across all queries · bcrypt-only demo passwords · admin dashboard · CSRF protection · optional live demo deployment
+| Layer | Directory | Status |
+|---|---|---|
+| FastAPI backend | `clinical-hms-api/` | Auth shell complete, clinical layer in progress |
+| React/TypeScript frontend | `clinical-hms-web/` | Auth shell complete, clinical screens in progress |
+| Reference assets | `assets/` | Province emblems + screenshots kept for the frontend build |
 
 ---
 
-## Features
-
-| Area | Capabilities |
-|------|----------------|
-| **Reception** | Patient registration, appointments, queue, announcements, reports |
-| **Nurse** | Vitals capture, triage notes, emergency alerts, handoff to doctor |
-| **Doctor** | Consultation notes, diagnosis, prescriptions, referrals |
-| **Pharmacist** | Prescription review, dispensing, workflow completion |
-| **Multi-site** | Province-themed UI, facility-scoped data, demo data for EC, NC, and WC |
-| **MediAlert** | Emergency triage notifications (email + logged SMS for demo) |
-
----
-
-## Tech Stack
-
-- **Backend:** PHP 8.x
-- **Database:** MySQL / MariaDB
-- **Frontend:** HTML, CSS, JavaScript
-- **Charts:** Chart.js
-- **Local server:** XAMPP (Apache + MySQL)
-
----
-
-## Quick Start
-
-1. Clone the repo into your XAMPP `htdocs` folder.
-2. Import `clinic_system_demo_v2.sql` into MySQL.
-3. Confirm database settings in `db.php` (defaults work for XAMPP).
-4. Open `http://localhost/clinic_system/` or `http://localhost/clinic_system/login.php`.
-
-Full step-by-step instructions: **[setup.md](setup.md)**
-
-### Demo login (Eastern Cape — Qonce — Clinic)
-
-| Role | Email | Password |
-|------|-------|----------|
-| Reception | `reception@clinic.com` | `123456` |
-| Nurse | `nurse@clinic.com` | `123456` |
-| Doctor | `doctor@clinic.com` | `123456` |
-| Pharmacist | `pharma@clinic.com` | `123456` |
-
-On login, select **Eastern Cape → Qonce → Clinic** and the matching role. Additional demo accounts for Northern Cape and Western Cape are listed in [setup.md](setup.md).
-
----
-
-## Project Structure
+## Architecture
 
 ```
-clinic_system/
+clinical-hms-web/          clinical-hms-api/
+React + TypeScript   ──►   FastAPI + SQLAlchemy   ──►   PostgreSQL
+Vite + Tailwind CSS        JWT auth (HS256)               (Docker)
+                           Alembic migrations
+                           Redis (reserved)
+```
+
+All API routes are versioned under `/api/v1`. The health check lives at `/health` (no prefix) for Docker/infra probes.
+
+---
+
+## What is built
+
+### Backend — `clinical-hms-api/`
+
+| Area | Detail |
+|---|---|
+| Auth | `POST /api/v1/auth/register`, `login`, `refresh`, `logout`, `GET /me` |
+| Facilities | `POST /api/v1/facilities/`, `GET /api/v1/facilities/` |
+| Tokens | JWT access token (60 min) + refresh token (7 days), HS256 |
+| Security | `HTTPBearer` scheme — Swagger `Authorize` takes a raw token, not a form |
+| DB | PostgreSQL via Docker; SQLite for tests (no Postgres needed to run the test suite) |
+| Migrations | Alembic — run `alembic upgrade head` before first start |
+| Tests | `pytest` — 20 tests covering auth and facilities, all passing |
+
+### Frontend — `clinical-hms-web/`
+
+| Area | Detail |
+|---|---|
+| Login | Email + password form, calls `POST /api/v1/auth/login` |
+| Token storage | `sessionStorage` — survives page refresh, clears on tab close |
+| Auto-refresh | 401 on any authenticated request silently calls `/api/v1/auth/refresh` and retries |
+| Route guard | `ProtectedRoute` reads `/api/v1/auth/me` on mount; redirects to `/login` if unauthenticated |
+| Shell | Top bar shows `full_name` + role; logout button calls `/api/v1/auth/logout` |
+| Dashboards | Role-appropriate placeholder pages for all 5 roles |
+| Tests | Vitest — form validation + token refresh retry, both passing |
+
+---
+
+## Quick start (Docker)
+
+All services run in Docker — no local Python or Node installation required.
+
+### 1. Clone and configure
+
+```bash
+git clone https://github.com/Elandre840/SA-HealthCare-management-System.git
+cd SA-HealthCare-management-System
+```
+
+Copy the environment files:
+
+```bash
+cp clinical-hms-api/.env.example clinical-hms-api/.env
+cp clinical-hms-web/.env.example clinical-hms-web/.env
+```
+
+### 2. Start the stack
+
+```bash
+cd clinical-hms-api
+docker compose up -d
+```
+
+This starts three containers: `clinical_hms_api` (FastAPI on `:8000`), `clinical_hms_postgres`, and `clinical_hms_redis`.
+
+### 3. Run migrations and seed demo data
+
+```bash
+docker compose exec api alembic upgrade head
+docker compose exec api python -m scripts.seed_demo
+```
+
+The seed script creates one facility (Demo Community Clinic, Johannesburg) and five staff accounts — one per role. All share the password `Password123!`.
+
+| Role | Email |
+|---|---|
+| Admin | `admin@clinicdemo.co.za` |
+| Reception | `reception@clinicdemo.co.za` |
+| Nurse | `nurse@clinicdemo.co.za` |
+| Doctor | `doctor@clinicdemo.co.za` |
+| Pharmacist | `pharmacist@clinicdemo.co.za` |
+
+### 4. Start the frontend
+
+```bash
+docker compose up -d web
+```
+
+The React dev server is available at [http://localhost:5173](http://localhost:5173).
+
+### 5. Explore the API
+
+Swagger UI: [http://localhost:8000/docs](http://localhost:8000/docs)
+
+To authorize in Swagger:
+1. Call `POST /api/v1/auth/login` with your credentials (JSON body).
+2. Copy the `access_token` from the response.
+3. Click **Authorize** and paste the token into the `HTTPBearer` field.
+
+---
+
+## Running tests
+
+### Backend (pytest)
+
+```bash
+docker compose exec api python -m pytest tests/ -v
+```
+
+No running Postgres needed — the test suite uses SQLite in-memory via `StaticPool`.
+
+### Frontend (Vitest)
+
+```bash
+docker compose run --rm web npm test
+```
+
+---
+
+## Project structure
+
+```
+SA-HealthCare-management-System/
 ├── assets/
-│   ├── backgrounds/     # UI backgrounds
-│   ├── emblems/         # Province emblems
-│   └── screenshots/     # Portfolio screenshots
-├── views/               # Shared staff UI partials
-├── login.php            # Entry point + role routing
-├── index.php            # Redirects to login
-├── register.php         # Staff registration
-├── receptionist.php     # Reception dashboard
-├── nurse.php            # Nurse workflow
-├── doctor.php           # Doctor consultations
-├── pharmacy.php         # Pharmacy dispensing
-├── clinic_schema.php    # Shared data-access helpers
-├── medi_alert.php       # Emergency notification helpers
-├── ui_theme.php         # Province colour themes
-├── db.php               # Database connection
-├── clinic_system_demo_v2.sql
-├── README.md
-└── setup.md
+│   ├── backgrounds/          # SA flag (used for login UI)
+│   ├── emblems/              # 9 province crests (used for role dashboards)
+│   └── screenshots/          # Portfolio screenshots of the PHP prototype
+│
+├── clinical-hms-api/         # FastAPI backend
+│   ├── alembic/              # Database migrations
+│   ├── app/
+│   │   ├── api/routes/       # auth.py, facilities.py, health.py
+│   │   ├── core/             # config.py, security.py (JWT)
+│   │   ├── db/               # models/, session.py, base.py
+│   │   ├── schemas/          # Pydantic I/O schemas
+│   │   └── services/         # auth_service.py
+│   ├── scripts/seed_demo.py  # Demo data seeder
+│   ├── tests/                # pytest suite
+│   ├── docker-compose.yml    # API + Postgres + Redis + Web
+│   ├── Dockerfile            # python:3.12 image
+│   └── requirements.txt
+│
+├── clinical-hms-web/         # React frontend
+│   ├── src/
+│   │   ├── auth/             # AuthContext, ProtectedRoute, useAuth
+│   │   ├── components/       # AppShell (top bar + logout)
+│   │   ├── lib/              # api.ts (typed fetch client), session.ts
+│   │   ├── pages/            # LoginPage, DashboardPage
+│   │   └── types/            # auth.ts (User, TokenResponse, etc.)
+│   ├── Dockerfile            # node:22-alpine image
+│   └── package.json
+│
+└── README.md
 ```
 
 ---
 
-## Screenshots
+## What's next
 
-| Reception registration | Reception queue |
-|------------------------|-----------------|
-| ![Reception](assets/screenshots/1_reception.png) | ![Reception queue](assets/screenshots/2_reception.png) |
+The clinical layer (patients → triage → vitals → consultation → prescriptions → pharmacy) is the next build phase. This will add:
 
-| Nurse workflow | Doctor consultation |
-|----------------|---------------------|
-| ![Nurse](assets/screenshots/10_nurse.png) | ![Doctor](assets/screenshots/20_doctor.png) |
-
-| Pharmacy dispensing | Patient medical history |
-|-----------------------|-------------------------|
-| ![Pharmacy](assets/screenshots/32_pharmacist.png) | ![Medical history](assets/screenshots/24_doctor.png) |
-
-More screenshots are available in `assets/screenshots/`.
+- `Patient` registration endpoint (reception)
+- `Visit` check-in and triage queue (nurse)
+- `Vitals` recording + MediAlert on RED triage
+- `Consultation` with ICD-10 diagnosis and prescriptions (doctor)
+- Prescription dispensing and visit completion (pharmacist)
+- `AuditLog` for POPIA compliance
 
 ---
 
-## What This Project Demonstrates
+## Tech stack
 
-- Full-stack CRUD and workflow state management
-- Role-based access control with session handling
-- Multi-tenant-style filtering (province / city / facility)
-- SQL schema design with appointments, consultations, and unified users model
-- UI theming and operational dashboards
-- Simulated emergency alerting pipeline
+| Layer | Technology |
+|---|---|
+| API framework | FastAPI 0.x, Pydantic v2 |
+| ORM / migrations | SQLAlchemy 2.0, Alembic |
+| Auth | JWT (python-jose), bcrypt (passlib) |
+| Database | PostgreSQL 16 (production), SQLite (tests) |
+| Cache / queue | Redis 7 (reserved for future use) |
+| Frontend | React 19, TypeScript 6, Vite 8, Tailwind CSS 4 |
+| Containerisation | Docker, Docker Compose |
+| Backend tests | pytest, httpx2, SQLite + StaticPool |
+| Frontend tests | Vitest, React Testing Library |
 
 ---
 
 ## Notes
 
-- **Portfolio / demo use only** — not intended for production healthcare without security hardening.
-- Demo passwords are plain text by design for easy local testing.
-- Do not commit real credentials or patient data.
+- Portfolio / demo use only — not intended for real clinical deployment without full security hardening.
+- Demo credentials are intentionally simple (`Password123!`) for local testing.
+- Do not commit real patient data or production secrets.
 
 ---
 
-## Author
+## Ownership
 
-**Elandre Booth**  
-Software Developer | Systems Builder
+**Owner:** Mj Technologies  
+**Developer:** Elandre Booth
 
-If you are reviewing this project for collaboration, feedback, or opportunities, feel free to connect via GitHub.
+Feel free to connect via GitHub for collaboration or feedback.
 
 ---
 
 ## License
 
-This project is shared for portfolio and educational purposes. Contact the author for other uses.
+Shared for portfolio and educational purposes. Contact the author for other uses.
