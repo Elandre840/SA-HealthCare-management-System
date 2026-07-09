@@ -75,4 +75,7 @@ def require_roles(*roles: StaffRole):
     return _require_role
 
 
-NurseUser = Annotated[User, Depends(require_roles(StaffRole.nurse))]
+ReceptionUser = Annotated[User, Depends(require_roles(StaffRole.reception, StaffRole.admin))]
+NurseUser = Annotated[User, Depends(require_roles(StaffRole.nurse, StaffRole.admin))]
+DoctorUser = Annotated[User, Depends(require_roles(StaffRole.doctor, StaffRole.admin))]
+PharmacistUser = Annotated[User, Depends(require_roles(StaffRole.pharmacist, StaffRole.admin))]
