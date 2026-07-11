@@ -1,26 +1,22 @@
 import { useState, type FormEvent } from 'react'
-import { Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 
 import { useAuth } from '../auth/useAuth'
 import { ApiError } from '../lib/api'
 
-type LocationState = {
-  from?: {
-    pathname?: string
-  }
-}
-
 export function LoginPage() {
   const navigate = useNavigate()
-  const location = useLocation()
   const { login, status } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const redirectTo =
-    (location.state as LocationState | null)?.from?.pathname ?? '/dashboard'
+  // Always land on /dashboard so the role-router sends each user to the
+  // correct module. Using location.state.from directly is unsafe because
+  // a nurse redirected from /consultations would land on a page they cannot
+  // access, producing an immediate "Access denied" screen.
+  const redirectTo = '/dashboard'
 
   if (status === 'authenticated') {
     return <Navigate to={redirectTo} replace />

@@ -1,0 +1,138 @@
+# docker-compose.yml — root-level orchestration file
+#
+# Starts the full Clinical HMS stack with a single command:
+#   docker compose up -d
+#
+# Services
+# --------
+#   api       — FastAPI backend  → http://localhost:8000
+#   web       — React/Vite SPA   → http://localhost:5173
+#   postgres  — PostgreSQL 16     → localhost:5432
+#   redis     — Redis 7           → localhost:6379 (reserved for future use)
+#
+# First-time setup (run these once after docker compose up -d):
+# ─────────────────────────────────────────────────────────────
+#   1. Copy the example env file:
+#        copy clinical-hms-api\.env.example clinical-hms-api\.env
+#
+#   2. Start all containers:
+#        docker compose up -d
+#
+#   3. Run database migrations:
+#        docker compose exec api alembic upgrade head
+#
+#   4. Seed demo accounts and triage queue:
+#        docker compose exec api python -m scripts.seed_demo
+#
+#   5. Open the app:  http://localhost:5173
+#      API docs:      http://localhost:8000/docs
+#
+# Demo credentials (password for all accounts: Password123!)
+# ────────────────────────────────────────────────────────────
+#   Reception  → reception@clinicdemo.co.za
+#   Nurse      → nurse@clinicdemo.co.za
+#   Doctor     → doctor@clinicdemo.co.za
+#   Pharmacist → pharmacist@clinicdemo.co.za
+#   Admin      → admin@clinicdemo.co.za
+#
+# Stopping / resetting
+# ─────────────────────
+#   Stop containers (keep data):  docker compose stop
+#   Remove containers (keep DB):  docker compose down
+#   Remove everything incl. DB:   docker compose down -v
+
+services:
+
+  # ── FastAPI backend ──────────────────────────────────────────────────────────
+  api:
+    build:
+      context: ./clinical-hms-api
+    container_name: clinical_hms_api
+    # --reload watches the mounted source for changes and restarts uvicorn
+    # automatically during development. Remove --reload for production.
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./clinical-hms-api/.env
+    volumes:
+      # Mount source so code changes are reflected without rebuilding the image.
+      - ./clinical-hms-api:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ── React / Vite frontend ────────────────────────────────────────────────────
+  web:
+    build:
+      context: ./clinical-hms-web
+    container_name: clinical_hms_web
+    environment:
+      # VITE_API_BASE_URL must be the address the *browser* uses to reach the API.
+      # It is NOT the Docker-internal hostname because Vite bundles a static SPA —
+      # the actual fetch() calls run in the user's browser, not inside the container.
+      VITE_API_BASE_URL: http://localhost:8000/api/v1
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./clinical-hms-web:/app
+      # An anonymous volume ensures node_modules installed inside the container
+      # are not overwritten by the (potentially different platform's) host directory.
+      - /app/node_modules
+    depends_on:
+      - api
+
+  # ── PostgreSQL database ──────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16
+    container_name: clinical_hms_postgres
+    restart: unless-stopped
+    env_file:
+      # Postgres credentials are read from the same .env as the API service.
+      # Docker Compose variable substitution (${POSTGRES_USER}) also requires
+      # these keys to exist in a .env file at the repo root OR in the shell env.
+      - ./clinical-hms-api/.env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-clinic_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-clinic_password}
+      POSTGRES_DB: ${POSTGRES_DB:-clinical_hms}
+    ports:
+      # Exposed to the host so you can connect with a GUI tool (pgAdmin, DBeaver)
+      # or run alembic migrations directly from your local machine.
+      - "5432:5432"
+    volumes:
+      # Named volume persists database data across container restarts.
+      # To reset the database completely: docker compose down -v
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      # pg_isready returns 0 only when the server is accepting connections.
+      # The API container waits for this before starting (depends_on condition).
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-clinic_user} -d ${POSTGRES_DB:-clinical_hms}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis cache / queue ──────────────────────────────────────────────────────
+  redis:
+    image: redis:7
+    container_name: clinical_hms_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    # Redis is wired in but not actively used yet. It is reserved for:
+    #   - Refresh token revocation (security hardening)
+    #   - Background task queues (e.g. Celery for report generation)
+    #   - API response caching (high-traffic scenarios)
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  # Named volume keeps PostgreSQL data between container restarts.
+  # This volume is stored by Docker on the host and survives docker compose down.
+  # Only docker compose down -v removes it.
+  postgres_data:

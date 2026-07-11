@@ -1,3 +1,16 @@
+"""
+User model for staff accounts (and future patient portal accounts).
+
+AccountType separates clinical staff from patient accounts in a single table so
+a future patient-facing portal can reuse the same authentication system without
+duplicating the users table.
+
+StaffRole drives role-based access control throughout the API. Every clinical
+route uses require_roles() from app.api.deps to restrict access to only the
+roles listed. Adding a new role here requires a corresponding Alembic migration
+to update the PostgreSQL ENUM type.
+"""
+
 import enum
 from datetime import datetime
 
@@ -8,6 +21,9 @@ from app.db.base import Base
 
 
 class AccountType(str, enum.Enum):
+    # Distinguishes staff (clinic employees with a role) from patients.
+    # Patients are managed via the Patient model; this enum is here so that a
+    # single users table can hold both if a future patient portal is needed.
     staff = "staff"
     patient = "patient"
 
@@ -32,6 +48,8 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(150), unique=True, index=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     employee_number: Mapped[str | None] = mapped_column(String(50), unique=True)
+    # role is None for patient accounts — only staff accounts carry a role.
+    # Always check role before acting on it in service code.
     role: Mapped[StaffRole | None] = mapped_column(Enum(StaffRole))
     status: Mapped[str] = mapped_column(String(50), default="Waiting", nullable=False)
     department: Mapped[str] = mapped_column(String(50), default="Reception", nullable=False)

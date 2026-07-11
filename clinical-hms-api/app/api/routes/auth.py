@@ -1,3 +1,20 @@
+"""
+Authentication routes — /api/v1/auth/*
+
+Endpoints
+---------
+POST /register  — create a new staff account (returns the user record, not tokens)
+POST /login     — exchange credentials for access + refresh tokens
+GET  /me        — return the currently signed-in user (validates the access token)
+POST /refresh   — exchange a valid refresh token for a new token pair
+POST /logout    — validate the access token then tell the client to clear its tokens
+
+Token strategy: see app/core/security.py for the full explanation. The short
+version is that access tokens expire in 60 minutes and refresh tokens in 7 days.
+The client should call /refresh automatically when it receives a 401 and retry
+the failed request exactly once — see src/lib/api.ts in the frontend.
+"""
+
 from fastapi import APIRouter, HTTPException, Response, status
 
 from app.api.deps import CurrentUser, DbSession
@@ -50,6 +67,10 @@ def get_me(current_user: CurrentUser) -> UserOut:
 
 @router.post("/refresh", response_model=TokenResponse)
 def refresh_token(refresh_in: RefreshRequest, db: DbSession) -> TokenResponse:
+    # TODO: Refresh tokens are currently not invalidated after use. A stolen
+    # refresh token can be replayed indefinitely until it expires (7 days).
+    # Fix: store issued refresh token IDs in Redis and reject any token whose ID
+    # is not in the set. On refresh, delete the old ID and insert the new one.
     subject = decode_token(refresh_in.refresh_token, expected_type="refresh")
 
     if subject is None:

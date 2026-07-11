@@ -1,3 +1,25 @@
+"""
+Nurse triage routes — /api/v1/triage/*
+
+Endpoints
+---------
+GET  /queue               — list patients awaiting_triage at this facility,
+                            sorted by check-in time (oldest first), with wait minutes.
+POST /{visit_id}/vitals   — record a set of vitals for the visit. Only one set
+                            is permitted per visit (enforced at DB and API level).
+PATCH /{visit_id}/priority — set the triage priority and advance the visit to
+                             awaiting_consultation. If priority is RED, an extra
+                             "medi_alert" entry is written to the audit log to
+                             flag the critical event.
+
+Two-step design
+---------------
+Vitals and priority are submitted as two separate requests (not one combined
+form) because it mirrors the real-world workflow: the nurse measures vitals
+first, reviews the numbers, then makes the priority decision. The frontend
+submits them sequentially in handleSubmitVitals().
+"""
+
 from datetime import UTC, datetime
 from typing import Annotated
 
@@ -29,7 +51,7 @@ def get_triage_queue(db: DbSession, current_user: NurseUser):
         )
         .order_by(Visit.checked_in_at)
     )
-    visits = list(db.scalars(stmt))
+    visits = list(db.scalars(stmt).unique())
     now = datetime.now(UTC)
 
     return [

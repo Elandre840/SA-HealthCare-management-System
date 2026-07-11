@@ -1,3 +1,25 @@
+"""
+Visit model and clinical workflow state machine.
+
+A Visit is created when a patient checks in at reception and destroyed only by
+hard-deletion (which we never do — soft audit trails are kept via AuditLog).
+The visit moves through the following status pipeline:
+
+  awaiting_triage
+      → awaiting_consultation  (after nurse records vitals and sets priority)
+          → in_consultation     (after doctor opens the consultation)
+              → awaiting_pharmacy  (if doctor prescribed medication)
+              → completed          (if no prescriptions were issued)
+          awaiting_pharmacy
+              → completed          (after pharmacist dispenses all prescriptions)
+
+TriagePriority uses the South African triage colour system (SATS):
+  GREEN  — non-urgent, stable
+  YELLOW — semi-urgent, needs assessment within 60 minutes
+  ORANGE — urgent, needs assessment within 10 minutes
+  RED    — critical, immediate intervention required (triggers MediAlert audit entry)
+"""
+
 import enum
 from datetime import datetime
 
@@ -19,7 +41,7 @@ class TriagePriority(str, enum.Enum):
     green = "green"    # non-urgent
     yellow = "yellow"  # semi-urgent
     orange = "orange"  # urgent
-    red = "red"        # critical — triggers MediAlert
+    red = "red"        # critical — triggers MediAlert audit entry
 
 
 class Visit(Base):

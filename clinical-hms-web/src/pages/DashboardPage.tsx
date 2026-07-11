@@ -1,19 +1,24 @@
 import { Navigate } from 'react-router-dom'
 
-import { RoleDashboardPlaceholder } from '../components/RoleDashboardPlaceholder'
 import { useAuth } from '../auth/useAuth'
-import { TriagePage } from './TriagePage'
 
+// DashboardPage acts as a role router — each role is redirected to its
+// dedicated clinical module. Add new roles here as modules are built.
 export function DashboardPage() {
   const { user } = useAuth()
 
-  if (user?.role === 'nurse') {
-    return <TriagePage />
+  switch (user?.role) {
+    case 'reception':
+      return <Navigate to="/patients" replace />
+    case 'nurse':
+      return <Navigate to="/triage" replace />
+    case 'doctor':
+      return <Navigate to="/consultations" replace />
+    case 'pharmacist':
+      return <Navigate to="/pharmacy" replace />
+    case 'admin':
+      return <Navigate to="/patients" replace />
+    default:
+      return <Navigate to="/login" replace />
   }
-
-  if (user?.role) {
-    return <RoleDashboardPlaceholder role={user.role} />
-  }
-
-  return <Navigate to="/login" replace />
 }
