@@ -22,6 +22,19 @@
  *       /pharmacy        — pharmacist + admin only
  *   /*                   — catch-all → /dashboard (handled by role router)
  */
+
+import { Navigate, Route, Routes } from 'react-router-dom'
+
+import { ProtectedRoute } from './auth/ProtectedRoute'
+import { AppShell } from './components/AppShell'
+import { ConsultationPage } from './pages/ConsultationPage'
+import { DashboardPage } from './pages/DashboardPage'
+import { LoginPage } from './pages/LoginPage'
+import { PatientsPage } from './pages/PatientsPage'
+import { PharmacyPage } from './pages/PharmacyPage'
+import { TriagePage } from './pages/TriagePage'
+import { UnauthorizedPage } from './pages/UnauthorizedPage'
+
 function App() {
   return (
     <Routes>
