@@ -1,3 +1,28 @@
+"""
+Password hashing and JWT token utilities.
+
+Password security
+-----------------
+bcrypt is used for hashing because it is intentionally slow, making offline
+brute-force attacks impractical even if the database is leaked.
+
+JWT strategy
+------------
+The system issues two token types signed with the same HMAC-SHA256 secret:
+
+  access  — short-lived (default 60 min), sent as Authorization: Bearer on
+             every protected API request.
+  refresh — longer-lived (default 7 days), used once to obtain a new access
+             token when it expires, then discarded by the client.
+
+A custom "typ" claim in the JWT payload prevents a client from accidentally (or
+maliciously) using a refresh token in place of an access token on a protected
+endpoint.
+
+TODO: refresh tokens are currently not revoked after use. Add Redis-backed
+revocation before deploying to production.
+"""
+
 from datetime import datetime, timedelta, timezone
 
 import bcrypt

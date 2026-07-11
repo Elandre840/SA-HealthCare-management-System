@@ -1,3 +1,22 @@
+"""
+Shared FastAPI dependencies for authentication and authorisation.
+
+Usage in route functions
+------------------------
+  # Any authenticated user:
+  def my_route(current_user: CurrentUser, db: DbSession): ...
+
+  # Restricted to a specific role (or admin):
+  def my_route(current_user: NurseUser, db: DbSession): ...
+
+  # Custom combination not already defined below:
+  MyRole = Annotated[User, Depends(require_roles(StaffRole.doctor, StaffRole.admin))]
+  def my_route(current_user: MyRole, db: DbSession): ...
+
+Role type aliases at the bottom of this file cover the four clinical roles. Add
+new aliases here as new modules are built so route files stay concise.
+"""
+
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, status

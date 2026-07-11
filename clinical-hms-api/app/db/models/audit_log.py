@@ -1,3 +1,16 @@
+"""
+Audit log model for POPIA-compliant action tracking.
+
+The Protection of Personal Information Act (POPIA) requires that systems
+handling health data maintain a record of who accessed or modified patient
+information and when. Every clinical action (registration, triage, dispensing,
+etc.) writes an immutable row to this table via audit_service.log_action().
+
+Records are append-only by convention — the application never deletes or
+updates audit rows. Retention policy and archiving are out of scope for this
+version but the indexed timestamp column makes range-based queries efficient.
+"""
+
 from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func

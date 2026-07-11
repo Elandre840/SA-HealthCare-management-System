@@ -1,3 +1,15 @@
+"""
+Database session factory and FastAPI dependency.
+
+A single SQLAlchemy engine is created at import time using DATABASE_URL from
+settings. The engine is shared across the application lifetime; individual
+requests each get their own Session from the SessionLocal factory.
+
+pool_pre_ping=True instructs SQLAlchemy to test a connection before handing it
+to a request handler. This gracefully recovers from a database restart or a
+connection that went stale while sitting in the pool.
+"""
+
 from collections.abc import Generator
 
 from sqlalchemy import create_engine

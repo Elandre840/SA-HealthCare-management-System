@@ -1,3 +1,12 @@
+"""
+User CRUD and authentication service.
+
+Business logic for user management lives here rather than in route handlers so
+it can be called from both the API routes and the seed script without duplicating
+code. Route handlers should import these functions rather than building SQL
+queries directly.
+"""
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 

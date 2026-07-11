@@ -1,3 +1,16 @@
+"""
+User model for staff accounts (and future patient portal accounts).
+
+AccountType separates clinical staff from patient accounts in a single table so
+a future patient-facing portal can reuse the same authentication system without
+duplicating the users table.
+
+StaffRole drives role-based access control throughout the API. Every clinical
+route uses require_roles() from app.api.deps to restrict access to only the
+roles listed. Adding a new role here requires a corresponding Alembic migration
+to update the PostgreSQL ENUM type.
+"""
+
 import enum
 from datetime import datetime
 

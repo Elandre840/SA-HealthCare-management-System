@@ -1,3 +1,16 @@
+"""
+Vitals model — one record per visit.
+
+The database-level unique constraint on visit_id guarantees that a visit can
+never have more than one set of vitals even under concurrent requests. The
+triage route returns HTTP 409 if a second POST is attempted, allowing the
+frontend to show a clear "already recorded" message rather than a 500 error.
+
+All measurements are stored as nullable so the nurse can record partial vitals
+(e.g. weight is optional) without the insert failing. Clinical validation of
+acceptable ranges is enforced in the Pydantic schema (app/schemas/triage.py).
+"""
+
 from datetime import datetime
 
 from sqlalchemy import DateTime, Float, ForeignKey, Integer, func

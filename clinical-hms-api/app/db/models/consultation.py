@@ -1,3 +1,16 @@
+"""
+Consultation model — the doctor's clinical record for a visit.
+
+Like Vitals, the unique constraint on visit_id enforces one consultation per
+visit at the database level. Doctors can amend an open consultation (PATCH)
+to correct errors; every amendment requires a reason, which is stored
+alongside the updated fields to maintain a clear audit trail.
+
+icd10_code stores the International Classification of Diseases (ICD-10) code
+assigned by the doctor, e.g. "J06.9" (acute upper respiratory infection).
+This is optional at open time but should be completed before closing.
+"""
+
 from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, String, Text, func

@@ -1,4 +1,39 @@
+/**
+ * API client factory for the Clinical HMS backend.
+ *
+ * All network calls go through the two-layer architecture below:
+ *
+ *   request()                — bare fetch wrapper; handles JSON parsing and
+ *                              converts non-2xx responses to ApiError instances.
+ *
+ *   authenticatedRequest()   — wraps request() with automatic 401 recovery:
+ *     1. Calls request() with the current access token.
+ *     2. On a 401, attempts to refresh the token via POST /auth/refresh.
+ *     3. Retries the original request with the new access token.
+ *     4. If the refresh also fails, calls onUnauthorized() which clears the
+ *        session and redirects to /login.
+ *
+ * Usage
+ * -----
+ * Never instantiate ApiClient directly. Use the api object from useAuth():
+ *   const { api } = useAuth()
+ *   const queue = await api.getTriageQueue()
+ *
+ * The api client is memoised in AuthContext and recreated only when the stored
+ * tokens change, so every component gets the same instance per session.
+ */
+
 import type { LoginRequest, TokenResponse, User } from '../types/auth'
+import type {
+  ConsultationClose,
+  ConsultationCreate,
+  ConsultationQueueItem,
+  ConsultationResponse,
+  PharmacyQueueItem,
+  PrescriptionCreate,
+  PrescriptionResponse,
+} from '../types/consultation'
+import type { PatientCreate, PatientResponse, PatientVisitResponse } from '../types/patient'
 import type { TriageQueueItem, VitalsCreate } from '../types/triage'
 
 type ApiClientOptions = {
@@ -135,6 +170,71 @@ export function createApiClient(options: ApiClientOptions) {
         body: JSON.stringify(vitals),
       })
     },
+    setTriagePriority(visitId: number, priority: string) {
+      return authenticatedRequest<void>(`/triage/${visitId}/priority`, {
+        method: 'PATCH',
+        body: JSON.stringify({ priority }),
+      })
+    },
+
+    // Patients
+    registerPatient(data: PatientCreate) {
+      return authenticatedRequest<PatientVisitResponse>('/patients/', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      })
+    },
+    listPatients(search?: string) {
+      const qs = search ? `?search=${encodeURIComponent(search)}` : ''
+      return authenticatedRequest<PatientResponse[]>(`/patients/${qs}`)
+    },
+
+    // Consultations
+    getConsultationQueue() {
+      return authenticatedRequest<ConsultationQueueItem[]>('/consultations/queue')
+    },
+    openConsultation(data: ConsultationCreate) {
+      return authenticatedRequest<ConsultationResponse>('/consultations/', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      })
+    },
+    getConsultation(consultationId: number) {
+      return authenticatedRequest<ConsultationResponse>(`/consultations/${consultationId}`)
+    },
+    addPrescription(consultationId: number, data: PrescriptionCreate) {
+      return authenticatedRequest<PrescriptionResponse>(
+        `/consultations/${consultationId}/prescriptions`,
+        { method: 'POST', body: JSON.stringify(data) },
+      )
+    },
+    closeConsultation(consultationId: number, data: ConsultationClose) {
+      return authenticatedRequest<{ consultation_id: number; visit_status: string; pending_prescriptions: number }>(
+        `/consultations/${consultationId}/close`,
+        { method: 'POST', body: JSON.stringify(data) },
+      )
+    },
+
+    // Pharmacy
+    getPharmacyQueue() {
+      return authenticatedRequest<PharmacyQueueItem[]>('/pharmacy/queue')
+    },
+    getVisitPrescriptions(visitId: number) {
+      return authenticatedRequest<PrescriptionResponse[]>(`/pharmacy/visits/${visitId}/prescriptions`)
+    },
+    dispensePrescription(prescriptionId: number) {
+      return authenticatedRequest<PrescriptionResponse>(
+        `/pharmacy/prescriptions/${prescriptionId}/dispense`,
+        { method: 'PATCH' },
+      )
+    },
+    completeVisit(visitId: number) {
+      return authenticatedRequest<{ visit_id: number; status: string }>(
+        `/pharmacy/visits/${visitId}/complete`,
+        { method: 'POST' },
+      )
+    },
+
     request: authenticatedRequest,
   }
 }

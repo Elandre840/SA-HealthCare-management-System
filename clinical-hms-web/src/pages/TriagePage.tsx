@@ -1,22 +1,33 @@
+/**
+ * TriagePage — nurse triage queue and vitals capture.
+ *
+ * When a patient is selected from the queue, the page renders VitalsCaptureForm
+ * in place of the queue list. On successful vitals submission:
+ *   1. POST /triage/{visit_id}/vitals   — saves the clinical measurements.
+ *   2. PATCH /triage/{visit_id}/priority — sets the priority and advances
+ *      the visit to awaiting_consultation.
+ *
+ * The patient is then removed from the local queue state immediately so the
+ * nurse does not need to refresh the page. A success banner is shown briefly.
+ *
+ * reloadKey is an integer state value that increments when the user clicks
+ * "Retry". The useEffect depends on it, so incrementing the key triggers a
+ * fresh API call without duplicating fetch logic or adding a refetch callback.
+ */
+
 import { useEffect, useState } from 'react'
 
 import { useAuth } from '../auth/useAuth'
 import { ApiError } from '../lib/api'
 import { VitalsCaptureForm } from '../components/VitalsCaptureForm'
-import type { TriageQueueItem, VitalsCreate } from '../types/triage'
+import type { TriageQueueItem, TriagePriority, VitalsCreate } from '../types/triage'
 
 function formatWaitTime(minutes: number) {
-  if (minutes < 60) {
-    return `${minutes} min`
-  }
-
+  if (!Number.isFinite(minutes) || minutes < 0) return '< 1 min'
+  if (minutes < 60) return `${minutes} min`
   const hours = Math.floor(minutes / 60)
   const remainingMinutes = minutes % 60
-
-  if (remainingMinutes === 0) {
-    return `${hours} hr`
-  }
-
+  if (remainingMinutes === 0) return `${hours} hr`
   return `${hours} hr ${remainingMinutes} min`
 }
 
@@ -74,25 +85,26 @@ export function TriagePage() {
     setReloadKey((current) => current + 1)
   }
 
-  async function handleSubmitVitals(vitals: VitalsCreate) {
+  async function handleSubmitVitals(vitals: VitalsCreate, priority: TriagePriority) {
     if (!selectedPatient) {
       return
     }
 
     await api.submitVitals(selectedPatient.visit_id, vitals)
+    await api.setTriagePriority(selectedPatient.visit_id, priority)
 
     setQueue((current) =>
       current.filter((item) => item.visit_id !== selectedPatient.visit_id),
     )
     setSelectedPatient(null)
-    setSuccessMessage(`Vitals saved for ${selectedPatient.patient_name}.`)
+    setSuccessMessage(`Vitals saved for ${selectedPatient.full_name}.`)
   }
 
   if (selectedPatient) {
     return (
       <VitalsCaptureForm
         patient={selectedPatient}
-        onSubmit={handleSubmitVitals}
+        onSubmit={(vitals, priority) => handleSubmitVitals(vitals, priority)}
         onCancel={() => setSelectedPatient(null)}
       />
     )
@@ -151,13 +163,13 @@ export function TriagePage() {
                 className="flex w-full flex-wrap items-center justify-between gap-4 px-4 py-4 text-left transition hover:bg-slate-50"
               >
                 <div>
-                  <p className="font-semibold text-slate-950">{patient.patient_name}</p>
+                  <p className="font-semibold text-slate-950">{patient.full_name}</p>
                   <p className="mt-1 text-sm text-slate-600">
                     Folder {patient.folder_number} · {patient.reason_for_visit}
                   </p>
                 </div>
                 <span className="rounded-full bg-amber-50 px-3 py-1 text-sm font-medium text-amber-800">
-                  Waiting {formatWaitTime(patient.wait_time_minutes)}
+                  Waiting {formatWaitTime(patient.wait_minutes)}
                 </span>
               </button>
             </li>

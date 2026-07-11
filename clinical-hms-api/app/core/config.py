@@ -1,3 +1,15 @@
+"""
+Centralised application configuration.
+
+All runtime settings are read from environment variables (or a .env file at the
+project root). Pydantic Settings validates the types and raises a clear error at
+startup if a required variable like DATABASE_URL or SECRET_KEY is missing, which
+prevents hard-to-debug runtime failures later.
+
+Local development:   copy .env.sqlite.example → .env  (uses SQLite, no Docker)
+Docker development:  copy .env.example → .env          (uses PostgreSQL in Docker)
+"""
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 

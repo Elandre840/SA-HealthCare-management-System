@@ -8,7 +8,7 @@ import {
   type VitalsFormValues,
 } from '../lib/triageValidation'
 import { ApiError } from '../lib/api'
-import { DUPLICATE_VITALS_MESSAGE, type TriageQueueItem, type VitalsCreate } from '../types/triage'
+import { DUPLICATE_VITALS_MESSAGE, type TriagePriority, type TriageQueueItem, type VitalsCreate } from '../types/triage'
 
 const PRIORITY_STYLES = {
   green: {
@@ -31,7 +31,7 @@ const PRIORITY_STYLES = {
 
 type VitalsCaptureFormProps = {
   patient: TriageQueueItem
-  onSubmit: (vitals: VitalsCreate) => Promise<void>
+  onSubmit: (vitals: VitalsCreate, priority: TriagePriority) => Promise<void>
   onCancel: () => void
 }
 
@@ -57,12 +57,12 @@ export function VitalsCaptureForm({ patient, onSubmit, onCancel }: VitalsCapture
     })
   }
 
-  async function submitVitals(payload: VitalsCreate) {
+  async function submitVitals(payload: VitalsCreate, priority: TriagePriority) {
     setSubmitError(null)
     setIsSubmitting(true)
 
     try {
-      await onSubmit(payload)
+      await onSubmit(payload, priority)
     } catch (error) {
       if (error instanceof ApiError && error.status === 409) {
         setSubmitError(DUPLICATE_VITALS_MESSAGE)
@@ -92,12 +92,12 @@ export function VitalsCaptureForm({ patient, onSubmit, onCancel }: VitalsCapture
     // RED priority triggers a MediAlert (emergency escalation). A confirmation
     // step is shown before submitting so the nurse cannot accidentally assign
     // the highest priority without an explicit second action.
-    if (validation.payload.triage_priority === 'red' && !showRedConfirmation) {
+    if (validation.priority === 'red' && !showRedConfirmation) {
       setShowRedConfirmation(true)
       return
     }
 
-    await submitVitals(validation.payload)
+    await submitVitals(validation.payload, validation.priority)
   }
 
   return (
@@ -108,7 +108,7 @@ export function VitalsCaptureForm({ patient, onSubmit, onCancel }: VitalsCapture
             Vitals capture
           </p>
           <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-950">
-            {patient.patient_name}
+            {patient.full_name}
           </h2>
           <p className="mt-1 text-sm text-slate-600">
             Folder {patient.folder_number} · {patient.reason_for_visit}
