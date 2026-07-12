@@ -23,6 +23,7 @@
 import { useEffect, useState } from 'react'
 
 import { useAuth } from '../auth/useAuth'
+import { PageHeader, HeaderActionGhost } from '../components/PageHeader'
 import { ApiError } from '../lib/api'
 import type { PharmacyQueueItem, PrescriptionResponse } from '../types/consultation'
 
@@ -115,17 +116,96 @@ export function PharmacyPage() {
 
   const allDispensed = prescriptions.length > 0 && prescriptions.every((rx) => rx.dispense_status === 'dispensed')
 
+  function handlePrint() {
+    if (!selected || prescriptions.length === 0) return
+    const win = window.open('', '_blank', 'width=620,height=820')
+    if (!win) return
+    const rows = prescriptions
+      .map(
+        (rx) =>
+          `<tr>
+            <td style="padding:8px 6px;border-bottom:1px solid #e5e7eb;vertical-align:top">
+              <strong>${rx.medication_name}</strong>
+            </td>
+            <td style="padding:8px 6px;border-bottom:1px solid #e5e7eb;vertical-align:top">
+              ${rx.dosage}
+            </td>
+            <td style="padding:8px 6px;border-bottom:1px solid #e5e7eb;vertical-align:top">
+              ${rx.frequency}
+            </td>
+            <td style="padding:8px 6px;border-bottom:1px solid #e5e7eb;vertical-align:top">
+              ${rx.duration}
+            </td>
+            <td style="padding:8px 6px;border-bottom:1px solid #e5e7eb;text-align:center;vertical-align:top">
+              ${rx.quantity}
+            </td>
+          </tr>`,
+      )
+      .join('')
+    const dateStr = new Date().toLocaleDateString('en-ZA', { dateStyle: 'full' })
+    win.document.write(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Prescription Slip — ${selected.full_name}</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 32px; max-width: 560px; margin: 0 auto; color: #111; }
+    h1 { font-size: 20px; margin: 0 0 4px; }
+    .clinic { font-size: 12px; color: #6b7280; margin-bottom: 20px; }
+    .meta { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; font-size: 13px; }
+    .meta strong { display: inline-block; min-width: 90px; color: #374151; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead th { text-align: left; border-bottom: 2px solid #111; padding: 6px 6px 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #374151; }
+    tbody tr:last-child td { border-bottom: none; }
+    .footer { margin-top: 32px; padding-top: 12px; border-top: 1px solid #e5e7eb; font-size: 11px; color: #9ca3af; }
+    .dispensed { font-size: 11px; color: #059669; }
+    @media print { body { padding: 0; } }
+  </style>
+</head>
+<body>
+  <h1>Prescription Slip</h1>
+  <p class="clinic">SA Healthcare Management System &mdash; Clinical HMS</p>
+  <div class="meta">
+    <div><strong>Patient:</strong> ${selected.full_name}</div>
+    <div><strong>Folder no:</strong> ${selected.folder_number}</div>
+    <div><strong>Date:</strong> ${dateStr}</div>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Medication</th>
+        <th>Dosage</th>
+        <th>Frequency</th>
+        <th>Duration</th>
+        <th style="text-align:center">Qty</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="footer">
+    Dispensed by Clinical HMS &mdash; Printed ${new Date().toLocaleString('en-ZA')}
+  </div>
+  <script>window.onload = function() { window.print(); }<\/script>
+</body>
+</html>`)
+    win.document.close()
+  }
+
   // ── Dispense screen ────────────────────────────────────────────────────────
   if (stage === 'dispense' && selected) {
     return (
-      <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-        <div className="mb-6">
-          <p className="text-sm font-semibold uppercase tracking-wide text-teal-700">Pharmacy</p>
-          <h2 className="mt-2 text-2xl font-bold text-slate-950">Dispense prescriptions</h2>
-          <p className="mt-1 text-slate-600">
-            {selected.full_name} · Folder {selected.folder_number}
-          </p>
-        </div>
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <PageHeader
+          section="Pharmacy"
+          title="Dispense prescriptions"
+          subtitle={`${selected.full_name} · Folder ${selected.folder_number}`}
+          actions={
+            <HeaderActionGhost onClick={() => { setStage('queue'); setSelected(null); setPrescriptions([]) }}>
+              Back to queue
+            </HeaderActionGhost>
+          }
+        />
+        <div className="p-8">
 
         {dispenseError ? (
           <p role="alert" className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -188,7 +268,7 @@ export function PharmacyPage() {
           </ul>
         )}
 
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <button
             type="button"
             disabled={!allDispensed || isCompleting}
@@ -198,13 +278,15 @@ export function PharmacyPage() {
           >
             {isCompleting ? 'Completing…' : 'Complete visit'}
           </button>
-          <button
-            type="button"
-            onClick={() => { setStage('queue'); setSelected(null); setPrescriptions([]) }}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-          >
-            Back to queue
-          </button>
+          {!rxLoading && prescriptions.length > 0 ? (
+            <button
+              type="button"
+              onClick={handlePrint}
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            >
+              Print prescription slip
+            </button>
+          ) : null}
         </div>
 
         {!allDispensed && prescriptions.length > 0 ? (
@@ -212,29 +294,21 @@ export function PharmacyPage() {
             All medications must be dispensed before you can complete the visit.
           </p>
         ) : null}
+        </div>
       </section>
     )
   }
 
   // ── Pharmacy queue ─────────────────────────────────────────────────────────
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-      <div className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-wide text-teal-700">Pharmacy</p>
-          <h2 className="mt-2 text-3xl font-bold tracking-tight text-slate-950">Dispensing queue</h2>
-          <p className="mt-2 max-w-2xl text-slate-600">
-            Patients awaiting medication dispensing, in order of arrival.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setReloadKey((k) => k + 1)}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-        >
-          Refresh
-        </button>
-      </div>
+    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <PageHeader
+        section="Pharmacy"
+        title="Dispensing queue"
+        subtitle="Patients awaiting medication dispensing, in order of arrival."
+        actions={<HeaderActionGhost onClick={() => setReloadKey((k) => k + 1)}>Refresh</HeaderActionGhost>}
+      />
+      <div className="p-8">
 
       {successBanner ? (
         <p role="status" className="mb-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
@@ -282,6 +356,7 @@ export function PharmacyPage() {
           ))}
         </ul>
       )}
+      </div>
     </section>
   )
 }

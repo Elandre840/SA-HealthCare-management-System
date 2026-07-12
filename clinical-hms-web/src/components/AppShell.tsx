@@ -1,17 +1,9 @@
 /**
  * AppShell — shared layout wrapper for all authenticated pages.
  *
- * Renders a top navigation header containing:
- *   - The application name and "Workspace" label.
- *   - Role-based navigation links (only links relevant to the user's role).
- *   - The signed-in user's full name, role badge, and a logout button.
- *
- * The page content is rendered via <Outlet />, which React Router replaces with
- * the matched child route component (e.g. PatientsPage, TriagePage, etc.).
- *
- * NAV_ITEMS maps each StaffRole to the set of links that role should see. The
- * admin role gets Facilities plus all clinical modules. Add new routes here
- * when new modules are built — no changes needed in individual page components.
+ * Dark-green navigation header consistent with the Clinical HMS brand.
+ * NAV_ITEMS maps each StaffRole to the links that role should see.
+ * The admin role sees all modules plus Facilities and Audit log.
  */
 
 import { NavLink, Outlet } from 'react-router-dom'
@@ -33,6 +25,7 @@ const NAV_ITEMS: Partial<Record<StaffRole, NavItem[]>> = {
   pharmacist: [{ to: '/pharmacy', label: 'Pharmacy' }],
   admin: [
     { to: '/facilities', label: 'Facilities' },
+    { to: '/audit-log', label: 'Audit log' },
     { to: '/patients', label: 'Patients' },
     { to: '/triage', label: 'Triage' },
     { to: '/consultations', label: 'Consultations' },
@@ -45,29 +38,47 @@ export function AppShell() {
   const navItems = user?.role ? (NAV_ITEMS[user.role] ?? []) : []
 
   return (
-    <div className="min-h-screen bg-slate-100">
-      <header className="border-b border-slate-200 bg-white">
+    <div className="min-h-screen" style={{ background: '#f3f7f5' }}>
+      <header
+        style={{
+          background: 'linear-gradient(90deg, #073d32 0%, #0d5c4a 60%, #0f6652 100%)',
+          fontFamily: '"Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif',
+        }}
+      >
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+          {/* Brand + nav */}
           <div className="flex items-center gap-6">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-teal-700">
+              <p
+                className="text-[10px] font-semibold uppercase tracking-[0.22em]"
+                style={{ color: '#c4a35a' }}
+              >
                 Clinical HMS
               </p>
-              <h1 className="text-lg font-semibold text-slate-950">Workspace</h1>
+              <h1
+                className="text-base font-semibold text-white"
+                style={{ fontFamily: '"Fraunces", Georgia, serif' }}
+              >
+                Workspace
+              </h1>
             </div>
 
             {navItems.length > 0 ? (
-              <nav aria-label="Main navigation" className="hidden sm:flex items-center gap-1">
+              <nav aria-label="Main navigation" className="hidden items-center gap-0.5 sm:flex">
                 {navItems.map((item) => (
                   <NavLink
                     key={item.to}
                     to={item.to}
-                    className={({ isActive }) =>
-                      `rounded-lg px-3 py-1.5 text-sm font-medium transition ${
-                        isActive
-                          ? 'bg-teal-50 text-teal-700'
-                          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950'
-                      }`
+                    className="rounded-lg px-3 py-1.5 text-sm font-medium transition"
+                    style={({ isActive }) =>
+                      isActive
+                        ? {
+                            background: 'rgba(196,163,90,0.18)',
+                            color: '#c4a35a',
+                            outline: '1px solid rgba(196,163,90,0.45)',
+                            outlineOffset: '-1px',
+                          }
+                        : { color: 'rgba(255,255,255,0.72)' }
                     }
                   >
                     {item.label}
@@ -77,17 +88,20 @@ export function AppShell() {
             ) : null}
           </div>
 
+          {/* User info + logout */}
           <div className="flex items-center gap-4">
             <div className="text-right">
-              <p className="text-sm font-medium text-slate-950">
+              <p className="text-sm font-medium text-white">
                 {user?.full_name ?? 'Signed in user'}
               </p>
-              <p className="text-xs text-slate-500">{formatRole(user?.role)}</p>
+              <p className="text-[11px]" style={{ color: 'rgba(196,163,90,0.85)' }}>
+                {formatRole(user?.role)}
+              </p>
             </div>
             <button
               type="button"
               onClick={() => void logout()}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              className="rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/20"
             >
               Logout
             </button>

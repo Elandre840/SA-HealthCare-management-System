@@ -28,6 +28,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 
 import { ProtectedRoute } from './auth/ProtectedRoute'
 import { AppShell } from './components/AppShell'
+import { AuditLogPage } from './pages/AuditLogPage'
 import { ConsultationPage } from './pages/ConsultationPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { FacilitiesPage } from './pages/FacilitiesPage'
@@ -48,6 +49,7 @@ function App() {
 
           <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
             <Route path="/facilities" element={<FacilitiesPage />} />
+            <Route path="/audit-log" element={<AuditLogPage />} />
           </Route>
 
           <Route element={<ProtectedRoute allowedRoles={['reception', 'admin']} />}>

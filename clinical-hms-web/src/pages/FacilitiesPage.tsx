@@ -16,6 +16,7 @@
 import { useEffect, useState } from 'react'
 
 import { useAuth } from '../auth/useAuth'
+import { PageHeader, HeaderActionPrimary, HeaderActionGhost } from '../components/PageHeader'
 import { ApiError } from '../lib/api'
 import type { FacilityCreate, FacilityResponse } from '../types/facility'
 
@@ -104,16 +105,13 @@ export function FacilitiesPage() {
 
   if (view === 'create') {
     return (
-      <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-        <div className="mb-6">
-          <p className="text-sm font-semibold uppercase tracking-wide text-teal-700">Admin</p>
-          <h2 className="mt-2 text-3xl font-bold tracking-tight text-slate-950">
-            Add facility
-          </h2>
-          <p className="mt-2 max-w-2xl text-slate-600">
-            Register a clinic so staff can be assigned to it and patients can be checked in there.
-          </p>
-        </div>
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <PageHeader
+          section="Admin"
+          title="Add facility"
+          subtitle="Register a clinic so staff can be assigned to it and patients can be checked in there."
+        />
+        <div className="p-8">
 
         {formError ? (
           <p role="alert" className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -191,32 +189,30 @@ export function FacilitiesPage() {
             </button>
           </div>
         </form>
+        </div>
       </section>
     )
   }
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-wide text-teal-700">Admin</p>
-          <h2 className="mt-2 text-3xl font-bold tracking-tight text-slate-950">Facilities</h2>
-          <p className="mt-2 max-w-2xl text-slate-600">
-            Clinics registered in the system. New facilities can only be created by an admin.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => {
-            setSuccessBanner(null)
-            setFormError(null)
-            setView('create')
-          }}
-          className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-teal-700"
-        >
-          + Add facility
-        </button>
-      </div>
+    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <PageHeader
+        section="Admin"
+        title="Facilities"
+        subtitle="Clinics registered in the system. New facilities can only be created by an admin."
+        actions={
+          <HeaderActionPrimary
+            onClick={() => {
+              setSuccessBanner(null)
+              setFormError(null)
+              setView('create')
+            }}
+          >
+            + Add facility
+          </HeaderActionPrimary>
+        }
+      />
+      <div className="p-8">
 
       {successBanner ? (
         <p
@@ -281,6 +277,7 @@ export function FacilitiesPage() {
           </table>
         </div>
       )}
+      </div>
     </section>
   )
 }

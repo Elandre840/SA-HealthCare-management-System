@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 
+import { PageHeader, HeaderActionGhost } from './PageHeader'
 import {
   EMPTY_VITALS_FORM,
   TRIAGE_PRIORITIES,
@@ -101,27 +102,14 @@ export function VitalsCaptureForm({ patient, onSubmit, onCancel }: VitalsCapture
   }
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-wide text-teal-700">
-            Vitals capture
-          </p>
-          <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-950">
-            {patient.full_name}
-          </h2>
-          <p className="mt-1 text-sm text-slate-600">
-            Folder {patient.folder_number} · {patient.reason_for_visit}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-        >
-          Back to queue
-        </button>
-      </div>
+    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <PageHeader
+        section={`Vitals capture · Folder ${patient.folder_number}`}
+        title={patient.full_name}
+        subtitle={patient.reason_for_visit}
+        actions={<HeaderActionGhost onClick={onCancel}>Back to queue</HeaderActionGhost>}
+      />
+      <div className="p-8">
 
       <form className="space-y-6" onSubmit={handleSubmit} noValidate>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -241,6 +229,7 @@ export function VitalsCaptureForm({ patient, onSubmit, onCancel }: VitalsCapture
           </button>
         ) : null}
       </form>
+      </div>
     </section>
   )
 }

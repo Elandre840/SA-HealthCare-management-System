@@ -21,6 +21,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 import { useAuth } from '../auth/useAuth'
+import { PageHeader, HeaderActionPrimary } from '../components/PageHeader'
 import { ApiError } from '../lib/api'
 import type { PatientCreate, PatientResponse, PatientVisitResponse } from '../types/patient'
 
@@ -46,6 +47,7 @@ export function PatientsPage() {
   const [view, setView] = useState<View>('list')
   const [patients, setPatients] = useState<PatientResponse[]>([])
   const [search, setSearch] = useState('')
+  const [genderFilter, setGenderFilter] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [listError, setListError] = useState<string | null>(null)
   const [successBanner, setSuccessBanner] = useState<string | null>(null)
@@ -122,6 +124,10 @@ export function PatientsPage() {
     setSuccessBanner(null)
   }
 
+  const filteredPatients = genderFilter
+    ? patients.filter((p) => p.gender === genderFilter)
+    : patients
+
   function handleBackToList() {
     if (registered) {
       setSuccessBanner(
@@ -136,20 +142,9 @@ export function PatientsPage() {
   // ── Success card after registration ───────────────────────────────────────
   if (view === 'register' && registered) {
     return (
-      <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-        <div className="mb-6 flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-            <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
-              <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
-            </svg>
-          </span>
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">
-              Registration successful
-            </p>
-            <h2 className="text-2xl font-bold text-slate-950">Patient checked in</h2>
-          </div>
-        </div>
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <PageHeader section="Reception · Registration successful" title="Patient checked in" />
+        <div className="p-8">
 
         <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 text-sm">
           <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
@@ -206,6 +201,7 @@ export function PatientsPage() {
             Back to patient list
           </button>
         </div>
+        </div>
       </section>
     )
   }
@@ -213,16 +209,13 @@ export function PatientsPage() {
   // ── Registration form ──────────────────────────────────────────────────────
   if (view === 'register') {
     return (
-      <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-        <div className="mb-6">
-          <p className="text-sm font-semibold uppercase tracking-wide text-teal-700">Reception</p>
-          <h2 className="mt-2 text-3xl font-bold tracking-tight text-slate-950">
-            Register new patient
-          </h2>
-          <p className="mt-2 max-w-2xl text-slate-600">
-            Complete the form below. Required fields are marked with *.
-          </p>
-        </div>
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <PageHeader
+          section="Reception"
+          title="Register new patient"
+          subtitle="Complete the form below. Required fields are marked with *."
+        />
+        <div className="p-8">
 
         {formError ? (
           <p role="alert" className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -371,42 +364,40 @@ export function PatientsPage() {
             >
               {isSubmitting ? 'Registering…' : 'Register & check in'}
             </button>
-            <button
-              type="button"
-              onClick={() => setView('list')}
-              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
+          <button
+            type="button"
+            onClick={() => setView('list')}
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
+        </div>
       </section>
     )
   }
 
   // ── Patient list ───────────────────────────────────────────────────────────
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-wide text-teal-700">Reception</p>
-          <h2 className="mt-2 text-3xl font-bold tracking-tight text-slate-950">Patients</h2>
-          <p className="mt-2 max-w-2xl text-slate-600">
-            Search by name or folder number, or register a new patient.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => {
-            setView('register')
-            setRegistered(null)
-            setFormError(null)
-          }}
-          className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-teal-700"
-        >
-          + Register patient
-        </button>
-      </div>
+    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <PageHeader
+        section="Reception"
+        title="Patients"
+        subtitle="Search by name or folder number, or register a new patient."
+        actions={
+          <HeaderActionPrimary
+            onClick={() => {
+              setView('register')
+              setRegistered(null)
+              setFormError(null)
+            }}
+          >
+            + Register patient
+          </HeaderActionPrimary>
+        }
+      />
+      <div className="p-8">
 
       {successBanner ? (
         <p role="status" className="mb-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
@@ -414,14 +405,33 @@ export function PatientsPage() {
         </p>
       ) : null}
 
-      <div className="mb-4">
+      <div className="mb-4 flex flex-wrap gap-3">
         <input
           type="search"
           placeholder="Search by name or folder number…"
           value={search}
           onChange={(e) => handleSearchChange(e.target.value)}
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500 sm:max-w-xs"
+          className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500 sm:max-w-xs"
         />
+        <select
+          value={genderFilter}
+          onChange={(e) => setGenderFilter(e.target.value)}
+          className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+        >
+          <option value="">All genders</option>
+          {GENDERS.map((g) => (
+            <option key={g} value={g}>{g}</option>
+          ))}
+        </select>
+        {genderFilter ? (
+          <button
+            type="button"
+            onClick={() => setGenderFilter('')}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+          >
+            Clear filter
+          </button>
+        ) : null}
       </div>
 
       {isLoading ? (
@@ -439,9 +449,11 @@ export function PatientsPage() {
             Retry
           </button>
         </div>
-      ) : patients.length === 0 ? (
+      ) : filteredPatients.length === 0 ? (
         <p className="rounded-lg border border-dashed border-slate-300 px-4 py-6 text-sm text-slate-600">
-          {search ? 'No patients found matching your search.' : 'No patients registered yet.'}
+          {search || genderFilter
+            ? 'No patients found matching your filters.'
+            : 'No patients registered yet.'}
         </p>
       ) : (
         <div className="overflow-x-auto">
@@ -456,7 +468,7 @@ export function PatientsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {patients.map((p) => (
+              {filteredPatients.map((p) => (
                 <tr key={p.id} className="hover:bg-slate-50">
                   <td className="py-3 pr-4 font-mono text-xs text-slate-600">{p.folder_number}</td>
                   <td className="py-3 pr-4 font-medium text-slate-950">
@@ -473,6 +485,7 @@ export function PatientsPage() {
           </table>
         </div>
       )}
+      </div>
     </section>
   )
 }

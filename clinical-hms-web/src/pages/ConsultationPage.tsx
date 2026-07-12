@@ -22,6 +22,7 @@
 import { useEffect, useState } from 'react'
 
 import { useAuth } from '../auth/useAuth'
+import { PageHeader, HeaderActionGhost } from '../components/PageHeader'
 import { ApiError } from '../lib/api'
 import type {
   ConsultationQueueItem,
@@ -157,6 +158,84 @@ export function ConsultationPage() {
     }
   }
 
+  function handlePrintRx() {
+    if (!consultation || !selected || consultation.prescriptions.length === 0) return
+    const win = window.open('', '_blank', 'width=620,height=820')
+    if (!win) return
+    const rows = consultation.prescriptions
+      .map(
+        (rx) =>
+          `<tr>
+            <td style="padding:8px 6px;border-bottom:1px solid #e5e7eb;vertical-align:top">
+              <strong>${rx.medication_name}</strong>
+            </td>
+            <td style="padding:8px 6px;border-bottom:1px solid #e5e7eb;vertical-align:top">
+              ${rx.dosage}
+            </td>
+            <td style="padding:8px 6px;border-bottom:1px solid #e5e7eb;vertical-align:top">
+              ${rx.frequency}
+            </td>
+            <td style="padding:8px 6px;border-bottom:1px solid #e5e7eb;vertical-align:top">
+              ${rx.duration}
+            </td>
+            <td style="padding:8px 6px;border-bottom:1px solid #e5e7eb;text-align:center;vertical-align:top">
+              ${rx.quantity}
+            </td>
+          </tr>`,
+      )
+      .join('')
+    const dateStr = new Date().toLocaleDateString('en-ZA', { dateStyle: 'full' })
+    win.document.write(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Prescription Note — ${selected.full_name}</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 32px; max-width: 560px; margin: 0 auto; color: #111; }
+    h1 { font-size: 20px; margin: 0 0 4px; }
+    .clinic { font-size: 12px; color: #6b7280; margin-bottom: 20px; }
+    .meta { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; font-size: 13px; }
+    .meta div { margin-bottom: 4px; }
+    .meta strong { display: inline-block; min-width: 110px; color: #374151; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead th { text-align: left; border-bottom: 2px solid #111; padding: 6px 6px 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #374151; }
+    tbody tr:last-child td { border-bottom: none; }
+    .footer { margin-top: 32px; padding-top: 12px; border-top: 1px solid #e5e7eb; font-size: 11px; color: #9ca3af; }
+    @media print { body { padding: 0; } }
+  </style>
+</head>
+<body>
+  <h1>Prescription Note</h1>
+  <p class="clinic">SA Healthcare Management System &mdash; Clinical HMS</p>
+  <div class="meta">
+    <div><strong>Patient:</strong> ${selected.full_name}</div>
+    <div><strong>Folder no:</strong> ${selected.folder_number}</div>
+    <div><strong>Reason for visit:</strong> ${selected.reason_for_visit}</div>
+    <div><strong>Date:</strong> ${dateStr}</div>
+    ${consultation.icd10_code ? `<div><strong>ICD-10:</strong> ${consultation.icd10_code}</div>` : ''}
+    ${consultation.diagnosis_text ? `<div><strong>Diagnosis:</strong> ${consultation.diagnosis_text}</div>` : ''}
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Medication</th>
+        <th>Dosage</th>
+        <th>Frequency</th>
+        <th>Duration</th>
+        <th style="text-align:center">Qty</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="footer">
+    Prescribed by Clinical HMS &mdash; Printed ${new Date().toLocaleString('en-ZA')}
+  </div>
+  <script>window.onload = function() { window.print(); }<\/script>
+</body>
+</html>`)
+    win.document.close()
+  }
+
   function handleReturnToQueue() {
     if (selected) {
       const pending = closedResult?.pending_prescriptions ?? 0
@@ -185,18 +264,9 @@ export function ConsultationPage() {
   // ── Closed result card ─────────────────────────────────────────────────────
   if (stage === 'consult' && closedResult) {
     return (
-      <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-        <div className="mb-6 flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-            <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
-              <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
-            </svg>
-          </span>
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">Consultation closed</p>
-            <h2 className="text-2xl font-bold text-slate-950">{selected?.full_name}</h2>
-          </div>
-        </div>
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <PageHeader section="Doctor · Consultation closed" title={selected?.full_name ?? ''} />
+        <div className="p-8">
 
         <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 text-sm">
           <dl className="grid grid-cols-2 gap-x-6 gap-y-3">
@@ -218,10 +288,11 @@ export function ConsultationPage() {
         <button
           type="button"
           onClick={handleReturnToQueue}
-          className="mt-6 rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-teal-700"
+          className="mt-6 rounded-lg bg-[#0d5c4a] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#073d32]"
         >
           Back to consultation queue
         </button>
+        </div>
       </section>
     )
   }
@@ -229,16 +300,13 @@ export function ConsultationPage() {
   // ── Active consultation ────────────────────────────────────────────────────
   if (stage === 'consult' && consultation) {
     return (
-      <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-        <div className="mb-6">
-          <p className="text-sm font-semibold uppercase tracking-wide text-teal-700">
-            Doctor · consultation #{consultation.id}
-          </p>
-          <h2 className="mt-2 text-2xl font-bold text-slate-950">{selected?.full_name}</h2>
-          <p className="text-sm text-slate-500">
-            Folder {selected?.folder_number} · Reason: {selected?.reason_for_visit}
-          </p>
-        </div>
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <PageHeader
+          section={`Doctor · Consultation #${consultation.id}`}
+          title={selected?.full_name ?? ''}
+          subtitle={`Folder ${selected?.folder_number ?? ''} · ${selected?.reason_for_visit ?? ''}`}
+        />
+        <div className="p-8">
 
         <div className="mb-6 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm">
           <p className="font-medium text-slate-500">Chief complaint</p>
@@ -363,6 +431,19 @@ export function ConsultationPage() {
           )}
         </div>
 
+        {/* Print prescription note */}
+        {consultation.prescriptions.length > 0 && !showCloseForm ? (
+          <div className="mb-4">
+            <button
+              type="button"
+              onClick={handlePrintRx}
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            >
+              Print prescription note
+            </button>
+          </div>
+        ) : null}
+
         {/* Close consultation form */}
         {showCloseForm ? (
           <form onSubmit={(e) => void handleCloseConsultation(e)} className="rounded-xl border border-slate-200 p-5">
@@ -436,6 +517,7 @@ export function ConsultationPage() {
             Close consultation
           </button>
         )}
+        </div>
       </section>
     )
   }
@@ -443,14 +525,13 @@ export function ConsultationPage() {
   // ── Open consultation form ─────────────────────────────────────────────────
   if (stage === 'open' && selected) {
     return (
-      <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-        <div className="mb-6">
-          <p className="text-sm font-semibold uppercase tracking-wide text-teal-700">Doctor</p>
-          <h2 className="mt-2 text-2xl font-bold text-slate-950">Open consultation</h2>
-          <p className="mt-1 text-slate-600">
-            {selected.full_name} · Folder {selected.folder_number}
-          </p>
-        </div>
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <PageHeader
+          section="Doctor"
+          title="Open consultation"
+          subtitle={`${selected.full_name} · Folder ${selected.folder_number}`}
+        />
+        <div className="p-8">
 
         <div className="mb-5 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm">
           <dl className="grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-3">
@@ -510,31 +591,21 @@ export function ConsultationPage() {
             </button>
           </div>
         </form>
+        </div>
       </section>
     )
   }
 
   // ── Consultation queue ─────────────────────────────────────────────────────
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-      <div className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-wide text-teal-700">Doctor</p>
-          <h2 className="mt-2 text-3xl font-bold tracking-tight text-slate-950">
-            Consultation queue
-          </h2>
-          <p className="mt-2 max-w-2xl text-slate-600">
-            Patients who have been triaged and are awaiting consultation.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setReloadKey((k) => k + 1)}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-        >
-          Refresh
-        </button>
-      </div>
+    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <PageHeader
+        section="Doctor"
+        title="Consultation queue"
+        subtitle="Patients who have been triaged and are awaiting consultation."
+        actions={<HeaderActionGhost onClick={() => setReloadKey((k) => k + 1)}>Refresh</HeaderActionGhost>}
+      />
+      <div className="p-8">
 
       {successBanner ? (
         <p role="status" className="mb-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
@@ -597,6 +668,7 @@ export function ConsultationPage() {
           ))}
         </ul>
       )}
+      </div>
     </section>
   )
 }

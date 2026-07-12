@@ -12,7 +12,7 @@ documentation once the server is running.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import auth, consultations, facilities, health, patients, pharmacy, triage
+from app.api.routes import audit_log, auth, consultations, facilities, health, patients, pharmacy, triage
 from app.core.config import settings
 
 app = FastAPI(
@@ -43,3 +43,4 @@ app.include_router(patients.router, prefix="/api/v1/patients", tags=["patients"]
 app.include_router(triage.router, prefix="/api/v1/triage", tags=["triage"])
 app.include_router(consultations.router, prefix="/api/v1/consultations", tags=["consultations"])
 app.include_router(pharmacy.router, prefix="/api/v1/pharmacy", tags=["pharmacy"])
+app.include_router(audit_log.router, prefix="/api/v1/audit-logs", tags=["audit-logs"])

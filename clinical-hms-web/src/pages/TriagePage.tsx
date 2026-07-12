@@ -18,6 +18,7 @@
 import { useEffect, useState } from 'react'
 
 import { useAuth } from '../auth/useAuth'
+import { PageHeader } from '../components/PageHeader'
 import { ApiError } from '../lib/api'
 import { VitalsCaptureForm } from '../components/VitalsCaptureForm'
 import type { TriageQueueItem, TriagePriority, VitalsCreate } from '../types/triage'
@@ -111,16 +112,13 @@ export function TriagePage() {
   }
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-      <div className="mb-6">
-        <p className="text-sm font-semibold uppercase tracking-wide text-teal-700">
-          Nurse triage
-        </p>
-        <h2 className="mt-2 text-3xl font-bold tracking-tight text-slate-950">Triage queue</h2>
-        <p className="mt-2 max-w-2xl text-slate-600">
-          Patients awaiting vitals capture at your facility, oldest first.
-        </p>
-      </div>
+    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <PageHeader
+        section="Nurse triage"
+        title="Triage queue"
+        subtitle="Patients awaiting vitals capture at your facility, oldest first."
+      />
+      <div className="p-8">
 
       {successMessage ? (
         <p
@@ -176,6 +174,7 @@ export function TriagePage() {
           ))}
         </ul>
       )}
+      </div>
     </section>
   )
 }

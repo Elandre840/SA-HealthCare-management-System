@@ -23,6 +23,7 @@
  * tokens change, so every component gets the same instance per session.
  */
 
+import type { AuditLogEntry } from '../types/audit_log'
 import type { LoginRequest, TokenResponse, User } from '../types/auth'
 import type {
   ConsultationClose,
@@ -248,6 +249,16 @@ export function createApiClient(options: ApiClientOptions) {
         `/pharmacy/visits/${visitId}/complete`,
         { method: 'POST' },
       )
+    },
+
+    // Audit log (admin only)
+    listAuditLogs(params?: { limit?: number; action?: string; entity_type?: string }) {
+      const qs = new URLSearchParams()
+      if (params?.limit) qs.set('limit', String(params.limit))
+      if (params?.action) qs.set('action', params.action)
+      if (params?.entity_type) qs.set('entity_type', params.entity_type)
+      const query = qs.size ? `?${qs.toString()}` : ''
+      return authenticatedRequest<AuditLogEntry[]>(`/audit-logs/${query}`)
     },
 
     request: authenticatedRequest,
