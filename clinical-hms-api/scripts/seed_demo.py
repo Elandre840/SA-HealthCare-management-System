@@ -1,3 +1,22 @@
+"""
+Demo data seed script — development use only.
+
+Creates a realistic starting state for demonstrating and testing the full
+clinical workflow without having to manually create accounts via the API:
+
+  1. Demo Community Clinic (Gauteng, Johannesburg)
+  2. Five staff accounts — one per role — all with the same password.
+  3. Three patients already checked in and waiting in the triage queue.
+
+Run after migrations:
+  docker compose exec api python -m scripts.seed_demo
+
+The script is idempotent: running it twice does not create duplicate records.
+
+WARNING: These accounts use a weak, publicly known password. They must never
+be used in a production or customer-facing environment.
+"""
+
 import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path

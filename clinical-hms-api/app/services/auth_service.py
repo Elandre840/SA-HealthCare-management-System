@@ -1,3 +1,12 @@
+"""
+User CRUD and authentication service.
+
+Business logic for user management lives here rather than in route handlers so
+it can be called from both the API routes and the seed script without duplicating
+code. Route handlers should import these functions rather than building SQL
+queries directly.
+"""
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -38,6 +47,10 @@ def authenticate_user(db: Session, email: str, password: str) -> User | None:
     user = get_user_by_email(db, email)
     if user is None:
         return None
+    # Always run verify_password even when the user is not found to prevent
+    # timing-based user enumeration. Currently we return early above, which
+    # leaks timing. TODO: replace with a constant-time dummy verify when user
+    # is None before this goes to production.
     if not verify_password(password, user.hashed_password):
         return None
     return user

@@ -1,3 +1,22 @@
+"""
+Shared FastAPI dependencies for authentication and authorisation.
+
+Usage in route functions
+------------------------
+  # Any authenticated user:
+  def my_route(current_user: CurrentUser, db: DbSession): ...
+
+  # Restricted to a specific role (or admin):
+  def my_route(current_user: NurseUser, db: DbSession): ...
+
+  # Custom combination not already defined below:
+  MyRole = Annotated[User, Depends(require_roles(StaffRole.doctor, StaffRole.admin))]
+  def my_route(current_user: MyRole, db: DbSession): ...
+
+Role type aliases at the bottom of this file cover the four clinical roles. Add
+new aliases here as new modules are built so route files stay concise.
+"""
+
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
@@ -64,6 +83,10 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
 def require_roles(*roles: StaffRole):
+    # Factory that returns a FastAPI dependency — this is the pattern for
+    # parameterised guards. Usage on a route:
+    #   DoctorOrAdmin = Annotated[User, Depends(require_roles(StaffRole.doctor, StaffRole.admin))]
+    # Add the type alias to this file and use it as a route parameter type.
     def _require_role(current_user: CurrentUser) -> User:
         if current_user.role not in roles:
             raise HTTPException(
@@ -79,3 +102,5 @@ ReceptionUser = Annotated[User, Depends(require_roles(StaffRole.reception, Staff
 NurseUser = Annotated[User, Depends(require_roles(StaffRole.nurse, StaffRole.admin))]
 DoctorUser = Annotated[User, Depends(require_roles(StaffRole.doctor, StaffRole.admin))]
 PharmacistUser = Annotated[User, Depends(require_roles(StaffRole.pharmacist, StaffRole.admin))]
+AdminUser = Annotated[User, Depends(require_roles(StaffRole.admin))]
+# AdminUser is used for privileged actions: create facility, register staff.

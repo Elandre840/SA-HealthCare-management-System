@@ -25,6 +25,10 @@ export type AuthContextValue = {
 // eslint-disable-next-line react-refresh/only-export-components
 export const AuthContext = createContext<AuthContextValue | null>(null)
 
+// AuthProvider wraps the entire app and is the single source of truth for
+// the current session. All components read from this context via useAuth().
+// The loading state exists to prevent a flash of the login page on page refresh
+// while the provider is validating a saved token with the API.
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AuthSession | null>(() => loadSession())
   const [user, setUser] = useState<User | null>(null)
@@ -50,6 +54,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearSession()
   }, [])
 
+  // api is memoised on session so every component that calls useAuth() gets
+  // the same client instance for the current token pair. Recreating it when
+  // the session changes ensures the new access token is picked up immediately
+  // after a refresh without needing a page reload.
   const api = useMemo(
     () =>
       createApiClient({

@@ -1,3 +1,21 @@
+"""
+Doctor consultation routes — /api/v1/consultations/*
+
+Consultation lifecycle
+----------------------
+  1. GET  /queue           — doctor views patients awaiting_consultation.
+  2. POST /               — doctor opens a consultation (visit → in_consultation).
+  3. GET  /{id}            — doctor can reload the consultation mid-session.
+  4. PATCH /{id}           — doctor amends fields; requires an amendment_reason.
+  5. POST /{id}/prescriptions — doctor adds one prescription at a time.
+  6. POST /{id}/close     — doctor finalises with diagnosis; system routes the visit:
+       • any pending prescriptions  → visit moves to awaiting_pharmacy
+       • no prescriptions           → visit moves to completed immediately
+
+Prescriptions can only be added while the visit is in_consultation. Once the
+consultation is closed, the prescription list is frozen and handed to pharmacy.
+"""
+
 from datetime import UTC, datetime
 from typing import Annotated
 
@@ -35,7 +53,7 @@ def get_consultation_queue(db: DbSession, current_user: DoctorUser):
         )
         .order_by(Visit.triaged_at, Visit.checked_in_at)
     )
-    visits = list(db.scalars(stmt))
+    visits = list(db.scalars(stmt).unique())
     return [
         {
             "visit_id": v.id,
