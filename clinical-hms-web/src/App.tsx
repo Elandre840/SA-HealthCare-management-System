@@ -16,6 +16,7 @@
  *   <ProtectedRoute>     — requires a valid session
  *     <AppShell>         — nav header + <Outlet />
  *       /dashboard       — role router → redirects to the user's module
+ *       /facilities      — admin only
  *       /patients        — reception + admin only
  *       /triage          — nurse + admin only
  *       /consultations   — doctor + admin only
@@ -29,6 +30,7 @@ import { ProtectedRoute } from './auth/ProtectedRoute'
 import { AppShell } from './components/AppShell'
 import { ConsultationPage } from './pages/ConsultationPage'
 import { DashboardPage } from './pages/DashboardPage'
+import { FacilitiesPage } from './pages/FacilitiesPage'
 import { LoginPage } from './pages/LoginPage'
 import { PatientsPage } from './pages/PatientsPage'
 import { PharmacyPage } from './pages/PharmacyPage'
@@ -43,6 +45,10 @@ function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<AppShell />}>
           <Route path="/dashboard" element={<DashboardPage />} />
+
+          <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+            <Route path="/facilities" element={<FacilitiesPage />} />
+          </Route>
 
           <Route element={<ProtectedRoute allowedRoles={['reception', 'admin']} />}>
             <Route path="/patients" element={<PatientsPage />} />

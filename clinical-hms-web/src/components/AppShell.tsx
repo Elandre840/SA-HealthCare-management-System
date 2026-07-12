@@ -10,8 +10,8 @@
  * the matched child route component (e.g. PatientsPage, TriagePage, etc.).
  *
  * NAV_ITEMS maps each StaffRole to the set of links that role should see. The
- * admin role gets all links. Add new routes here when new clinical modules are
- * built — no changes needed in App.tsx or individual page components.
+ * admin role gets Facilities plus all clinical modules. Add new routes here
+ * when new modules are built — no changes needed in individual page components.
  */
 
 import { NavLink, Outlet } from 'react-router-dom'
@@ -32,6 +32,7 @@ const NAV_ITEMS: Partial<Record<StaffRole, NavItem[]>> = {
   doctor: [{ to: '/consultations', label: 'Consultations' }],
   pharmacist: [{ to: '/pharmacy', label: 'Pharmacy' }],
   admin: [
+    { to: '/facilities', label: 'Facilities' },
     { to: '/patients', label: 'Patients' },
     { to: '/triage', label: 'Triage' },
     { to: '/consultations', label: 'Consultations' },

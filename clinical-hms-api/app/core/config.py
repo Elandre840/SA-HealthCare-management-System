@@ -19,7 +19,8 @@ class Settings(BaseSettings):
     project_name: str = "Clinical HMS API"
     environment: str = "local"
     database_url: str
-    # Optional for now — wired in .env for future caching and background jobs.
+    # Optional for Docker — used for refresh-token revocation. When unset,
+    # the API falls back to an in-process store (fine for pytest / SQLite).
     redis_url: str | None = None
     secret_key: str
     access_token_expire_minutes: int = 60

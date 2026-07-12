@@ -1,31 +1,21 @@
 # docker-compose.yml — root-level orchestration file
 #
-# Starts the full Clinical HMS stack with a single command:
-#   docker compose up -d
+# Reviewer quick start (four commands from the repo root):
+# ────────────────────────────────────────────────────────
+#   0. Once only — copy env if missing:
+#        copy clinical-hms-api\.env.example clinical-hms-api\.env
+#
+#   1. docker compose up -d --build
+#   2. docker compose exec api alembic upgrade head
+#   3. docker compose exec api python -m scripts.seed_demo
+#   4. Open http://localhost:5173  (API docs: http://localhost:8000/docs)
 #
 # Services
 # --------
 #   api       — FastAPI backend  → http://localhost:8000
 #   web       — React/Vite SPA   → http://localhost:5173
 #   postgres  — PostgreSQL 16     → localhost:5432
-#   redis     — Redis 7           → localhost:6379 (reserved for future use)
-#
-# First-time setup (run these once after docker compose up -d):
-# ─────────────────────────────────────────────────────────────
-#   1. Copy the example env file:
-#        copy clinical-hms-api\.env.example clinical-hms-api\.env
-#
-#   2. Start all containers:
-#        docker compose up -d
-#
-#   3. Run database migrations:
-#        docker compose exec api alembic upgrade head
-#
-#   4. Seed demo accounts and triage queue:
-#        docker compose exec api python -m scripts.seed_demo
-#
-#   5. Open the app:  http://localhost:5173
-#      API docs:      http://localhost:8000/docs
+#   redis     — Redis 7           → localhost:6379 (refresh-token revocation)
 #
 # Demo credentials (password for all accounts: Password123!)
 # ────────────────────────────────────────────────────────────
@@ -34,6 +24,12 @@
 #   Doctor     → doctor@clinicdemo.co.za
 #   Pharmacist → pharmacist@clinicdemo.co.za
 #   Admin      → admin@clinicdemo.co.za
+#
+# Production frontend image (optional):
+#   docker build -t clinical-hms-web:prod --target production \
+#     --build-arg VITE_API_BASE_URL=http://localhost:8000/api/v1 \
+#     ./clinical-hms-web
+#   docker run --rm -p 8080:80 clinical-hms-web:prod
 #
 # Stopping / resetting
 # ─────────────────────
@@ -68,6 +64,7 @@ services:
   web:
     build:
       context: ./clinical-hms-web
+      target: development
     container_name: clinical_hms_web
     environment:
       # VITE_API_BASE_URL must be the address the *browser* uses to reach the API.
@@ -121,10 +118,8 @@ services:
     restart: unless-stopped
     ports:
       - "6379:6379"
-    # Redis is wired in but not actively used yet. It is reserved for:
-    #   - Refresh token revocation (security hardening)
-    #   - Background task queues (e.g. Celery for report generation)
-    #   - API response caching (high-traffic scenarios)
+    # Redis is used for refresh-token revocation (JTI allow-list).
+    # Also reserved for background task queues and response caching later.
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s

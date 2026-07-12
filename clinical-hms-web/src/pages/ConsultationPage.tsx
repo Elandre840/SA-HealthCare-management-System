@@ -163,7 +163,7 @@ export function ConsultationPage() {
       const dest = closedResult?.visit_status === 'awaiting_pharmacy' ? 'pharmacy' : 'completed'
       setSuccessBanner(
         `Consultation for ${selected.full_name} closed — ${
-          dest === 'awaiting_pharmacy'
+          dest === 'pharmacy'
             ? `${pending} prescription(s) sent to pharmacy.`
             : 'visit completed (no prescriptions).'
         }`,

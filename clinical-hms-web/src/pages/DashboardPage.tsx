@@ -17,7 +17,7 @@ export function DashboardPage() {
     case 'pharmacist':
       return <Navigate to="/pharmacy" replace />
     case 'admin':
-      return <Navigate to="/patients" replace />
+      return <Navigate to="/facilities" replace />
     default:
       return <Navigate to="/login" replace />
   }

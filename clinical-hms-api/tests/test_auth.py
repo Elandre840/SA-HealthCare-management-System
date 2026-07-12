@@ -9,28 +9,70 @@ via the `client` fixture in conftest.py.
 import pytest
 from fastapi.testclient import TestClient
 
+from tests.conftest import _auth_headers, _bootstrap_user
+
+
 # ---------------------------------------------------------------------------
 # POST /api/v1/auth/register
 # ---------------------------------------------------------------------------
 
 class TestRegister:
-    def test_success(self, client: TestClient) -> None:
-        resp = client.post("/api/v1/auth/register", json={
-            "account_type": "staff",
-            "first_name": "Amina",
-            "surname": "Admin",
-            "email": "amina@test.co.za",
-            "password": "Password123!",
-            "role": "admin",
-            "department": "Administration",
-        })
+    def test_success(self, client: TestClient, admin_tokens: dict) -> None:
+        resp = client.post(
+            "/api/v1/auth/register",
+            headers=_auth_headers(admin_tokens),
+            json={
+                "account_type": "staff",
+                "first_name": "Amina",
+                "surname": "Admin",
+                "email": "amina@test.co.za",
+                "password": "Password123!",
+                "role": "admin",
+                "department": "Administration",
+            },
+        )
         assert resp.status_code == 201
         body = resp.json()
         assert body["email"] == "amina@test.co.za"
         assert body["role"] == "admin"
         assert "hashed_password" not in body
 
-    def test_duplicate_email_returns_409(self, client: TestClient) -> None:
+    def test_unauthenticated_returns_401(self, client: TestClient) -> None:
+        resp = client.post(
+            "/api/v1/auth/register",
+            json={
+                "account_type": "staff",
+                "first_name": "Open",
+                "surname": "User",
+                "email": "open@test.co.za",
+                "password": "Password123!",
+                "role": "nurse",
+                "department": "Nursing",
+            },
+        )
+        assert resp.status_code == 401
+
+    def test_non_admin_returns_403(
+        self, client: TestClient, auth_headers: dict
+    ) -> None:
+        resp = client.post(
+            "/api/v1/auth/register",
+            headers=auth_headers,
+            json={
+                "account_type": "staff",
+                "first_name": "Forbidden",
+                "surname": "User",
+                "email": "forbidden@test.co.za",
+                "password": "Password123!",
+                "role": "nurse",
+                "department": "Nursing",
+            },
+        )
+        assert resp.status_code == 403
+
+    def test_duplicate_email_returns_409(
+        self, client: TestClient, admin_tokens: dict
+    ) -> None:
         payload = {
             "account_type": "staff",
             "first_name": "Nandi",
@@ -40,8 +82,9 @@ class TestRegister:
             "role": "nurse",
             "department": "Nursing",
         }
-        client.post("/api/v1/auth/register", json=payload)
-        resp = client.post("/api/v1/auth/register", json=payload)
+        headers = _auth_headers(admin_tokens)
+        assert client.post("/api/v1/auth/register", headers=headers, json=payload).status_code == 201
+        resp = client.post("/api/v1/auth/register", headers=headers, json=payload)
         assert resp.status_code == 409
 
 
@@ -52,20 +95,12 @@ class TestRegister:
 class TestLogin:
     @pytest.fixture(autouse=True)
     def _seed_user(self, client: TestClient) -> None:
-        client.post("/api/v1/auth/register", json={
-            "account_type": "staff",
-            "first_name": "Rachel",
-            "surname": "Reception",
-            "email": "rachel@test.co.za",
-            "password": "Password123!",
-            "role": "reception",
-            "department": "Reception",
-        })
+        _bootstrap_user(client, "rachel@test.co.za", "reception")
 
     def test_valid_credentials_return_tokens(self, client: TestClient) -> None:
         resp = client.post("/api/v1/auth/login", json={
             "email": "rachel@test.co.za",
-            "password": "Password123!",
+            "password": "TestPass123!",
         })
         assert resp.status_code == 200
         body = resp.json()
@@ -132,6 +167,19 @@ class TestRefresh:
         assert "access_token" in body
         assert "refresh_token" in body
 
+    def test_used_refresh_token_cannot_be_replayed(
+        self, client: TestClient, reception_tokens: dict
+    ) -> None:
+        first = client.post("/api/v1/auth/refresh", json={
+            "refresh_token": reception_tokens["refresh_token"],
+        })
+        assert first.status_code == 200
+
+        replay = client.post("/api/v1/auth/refresh", json={
+            "refresh_token": reception_tokens["refresh_token"],
+        })
+        assert replay.status_code == 401
+
     def test_invalid_refresh_token_returns_401(self, client: TestClient) -> None:
         resp = client.post("/api/v1/auth/refresh", json={"refresh_token": "garbage"})
         assert resp.status_code == 401
@@ -151,9 +199,25 @@ class TestRefresh:
 
 class TestLogout:
     def test_valid_token_returns_204(self, client: TestClient, auth_headers: dict) -> None:
-        resp = client.post("/api/v1/auth/logout", headers=auth_headers)
+        resp = client.post("/api/v1/auth/logout", headers=auth_headers, json={})
         assert resp.status_code == 204
 
+    def test_logout_revokes_refresh_token(
+        self, client: TestClient, reception_tokens: dict
+    ) -> None:
+        headers = {"Authorization": f"Bearer {reception_tokens['access_token']}"}
+        resp = client.post(
+            "/api/v1/auth/logout",
+            headers=headers,
+            json={"refresh_token": reception_tokens["refresh_token"]},
+        )
+        assert resp.status_code == 204
+
+        replay = client.post("/api/v1/auth/refresh", json={
+            "refresh_token": reception_tokens["refresh_token"],
+        })
+        assert replay.status_code == 401
+
     def test_no_token_returns_401(self, client: TestClient) -> None:
-        resp = client.post("/api/v1/auth/logout")
+        resp = client.post("/api/v1/auth/logout", json={})
         assert resp.status_code == 401

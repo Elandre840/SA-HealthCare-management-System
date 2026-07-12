@@ -102,3 +102,5 @@ ReceptionUser = Annotated[User, Depends(require_roles(StaffRole.reception, Staff
 NurseUser = Annotated[User, Depends(require_roles(StaffRole.nurse, StaffRole.admin))]
 DoctorUser = Annotated[User, Depends(require_roles(StaffRole.doctor, StaffRole.admin))]
 PharmacistUser = Annotated[User, Depends(require_roles(StaffRole.pharmacist, StaffRole.admin))]
+AdminUser = Annotated[User, Depends(require_roles(StaffRole.admin))]
+# AdminUser is used for privileged actions: create facility, register staff.

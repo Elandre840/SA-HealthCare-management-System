@@ -33,6 +33,7 @@ import type {
   PrescriptionCreate,
   PrescriptionResponse,
 } from '../types/consultation'
+import type { FacilityCreate, FacilityResponse } from '../types/facility'
 import type { PatientCreate, PatientResponse, PatientVisitResponse } from '../types/patient'
 import type { TriageQueueItem, VitalsCreate } from '../types/triage'
 
@@ -159,6 +160,9 @@ export function createApiClient(options: ApiClientOptions) {
     logout() {
       return authenticatedRequest<void>('/auth/logout', {
         method: 'POST',
+        body: JSON.stringify({
+          refresh_token: options.getRefreshToken(),
+        }),
       })
     },
     getTriageQueue() {
@@ -187,6 +191,17 @@ export function createApiClient(options: ApiClientOptions) {
     listPatients(search?: string) {
       const qs = search ? `?search=${encodeURIComponent(search)}` : ''
       return authenticatedRequest<PatientResponse[]>(`/patients/${qs}`)
+    },
+
+    // Facilities
+    listFacilities() {
+      return authenticatedRequest<FacilityResponse[]>('/facilities/')
+    },
+    createFacility(data: FacilityCreate) {
+      return authenticatedRequest<FacilityResponse>('/facilities/', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      })
     },
 
     // Consultations

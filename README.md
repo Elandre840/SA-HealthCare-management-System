@@ -65,8 +65,8 @@ Doctor opens consultation, adds prescriptions, closes with diagnosis
 
 | Area | Detail |
 |---|---|
-| Auth | register, login, refresh, logout, /me — JWT HS256, bcrypt passwords |
-| Facilities | create and list clinics |
+| Auth | register (admin only), login, refresh (rotating JTIs), logout (revokes refresh), /me — JWT HS256, bcrypt passwords |
+| Facilities | create (admin) and list (authenticated) clinics; admin UI at `/facilities` |
 | Patients | register patient + auto check-in (POST /patients/) with audit log |
 | Triage | queue, vitals capture (POST), priority assignment (PATCH) with MediAlert on RED |
 | Consultations | queue, open, amend, add prescriptions, close with ICD-10 |
@@ -84,6 +84,7 @@ Doctor opens consultation, adds prescriptions, closes with diagnosis
 | Auto-refresh | 401 silently calls /auth/refresh and retries the original request |
 | Role routing | Dashboard redirects each role to its clinical module |
 | Patients | Search, register form with success card showing visit ID |
+| Facilities | Admin list + create form (SA province select) |
 | Triage | Queue list, VitalsCaptureForm, RED priority confirmation dialog |
 | Consultations | Queue → open → add Rx → close with diagnosis and ICD-10 |
 | Pharmacy | Queue → dispense each Rx individually → complete visit |
@@ -95,67 +96,22 @@ Doctor opens consultation, adds prescriptions, closes with diagnosis
 
 All services run in Docker. **No local Python or Node installation required.**
 
-### 1. Clone and configure
+### Four commands (from the repo root)
 
 ```bash
-git clone https://github.com/Elandre840/SA-HealthCare-management-System.git
-cd SA-HealthCare-management-System
-```
+# 0. Once only — if clinical-hms-api/.env does not exist yet:
+#    copy clinical-hms-api\.env.example clinical-hms-api\.env   (Windows)
+#    cp clinical-hms-api/.env.example clinical-hms-api/.env     (macOS/Linux)
 
-Copy the environment file and review it:
-
-```bash
-# Windows (PowerShell)
-copy clinical-hms-api\.env.example clinical-hms-api\.env
-
-# macOS / Linux
-cp clinical-hms-api/.env.example clinical-hms-api/.env
-```
-
-> The default `.env.example` values work out-of-the-box with Docker Compose.
-> Change `SECRET_KEY` before any internet-facing deployment.
-
-### 2. Start all containers
-
-```bash
-docker compose up -d
-```
-
-This starts four containers from the root-level `docker-compose.yml`:
-
-| Container | Service | Port |
-|---|---|---|
-| `clinical_hms_api` | FastAPI | 8000 |
-| `clinical_hms_web` | Vite dev server | 5173 |
-| `clinical_hms_postgres` | PostgreSQL 16 | 5432 |
-| `clinical_hms_redis` | Redis 7 | 6379 |
-
-The API waits for Postgres to pass its health check before starting.
-
-### 3. Run database migrations
-
-```bash
+docker compose up -d --build
 docker compose exec api alembic upgrade head
-```
-
-This applies both migration files and creates all tables in PostgreSQL.
-
-### 4. Seed demo data
-
-```bash
 docker compose exec api python -m scripts.seed_demo
 ```
 
-Creates one clinic (Demo Community Clinic, Johannesburg), five staff accounts,
-and three patients already waiting in the triage queue.
+Then open **http://localhost:5173** (API docs: http://localhost:8000/docs).
 
-### 5. Open the application
-
-| URL | Description |
-|---|---|
-| http://localhost:5173 | React SPA — sign in here |
-| http://localhost:8000/docs | Swagger UI — interactive API explorer |
-| http://localhost:8000/health | Health check endpoint |
+> The default `.env.example` values work out-of-the-box with Docker Compose.
+> Change `SECRET_KEY` before any internet-facing deployment.
 
 ### Demo credentials
 
@@ -268,7 +224,7 @@ clinic_system/
 | ORM / migrations | SQLAlchemy 2.0, Alembic |
 | Auth | JWT HS256 (python-jose), bcrypt |
 | Database | PostgreSQL 16 (Docker), SQLite in-memory (tests) |
-| Cache / queue | Redis 7 (wired, reserved for token revocation and background jobs) |
+| Cache / queue | Redis 7 (refresh-token revocation; reserved for queues/caching) |
 | Frontend | React 19, TypeScript 6, Vite 8, Tailwind CSS 4 |
 | Containerisation | Docker, Docker Compose |
 | Backend tests | pytest, httpx2, SQLite + StaticPool |
@@ -280,10 +236,7 @@ clinic_system/
 
 | Area | Description |
 |---|---|
-| Refresh token revocation | Tokens are currently stateless — a stolen refresh token is valid until expiry. Fix: store issued token IDs in Redis and invalidate on use or logout. |
-| Facilities auth | The create/list facility endpoints are currently unauthenticated (TODO comment in routes/facilities.py). Should require admin role before production. |
-| Production frontend build | The web Dockerfile runs the Vite dev server. A production deployment should build a static bundle and serve it via nginx. |
-| Front-end tests | Two test files (triageValidation.test.ts, VitalsCaptureForm.test.tsx) reference an older vitals schema and need to be updated to match the current field names. |
+| Production API process | Compose still runs uvicorn with `--reload` for local development. Remove `--reload` (and prefer gunicorn/uvicorn workers) for a hardened deploy. |
 
 ---
 
