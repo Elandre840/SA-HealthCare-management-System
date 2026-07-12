@@ -206,7 +206,7 @@ pharmacist@clinicdemo.co.za
 GET  /health
 POST /facilities/
 GET  /facilities/
-POST /auth/register
+POST /auth/register   (admin Bearer token required)
 POST /auth/login
 GET  /auth/me
 POST /auth/refresh
@@ -218,8 +218,9 @@ POST /auth/logout
 1. Run `python scripts/seed_demo.py` or the Docker equivalent to seed demo staff.
 2. Call `POST /auth/login` with one of the demo accounts to receive access and refresh tokens.
 3. Call `GET /auth/me` with `Authorization: Bearer <access_token>` to confirm the protected route.
-4. Call `POST /auth/refresh` with the refresh token to confirm token renewal.
-5. Call `POST /auth/logout` to confirm the frontend can end the session cleanly.
+4. (Optional) As admin, call `POST /auth/register` to create another staff account.
+5. Call `POST /auth/refresh` with the refresh token to confirm token renewal.
+6. Call `POST /auth/logout` to confirm the frontend can end the session cleanly.
 
 ## Local Sharing / Deployment Notes
 

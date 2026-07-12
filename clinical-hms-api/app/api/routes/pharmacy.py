@@ -1,3 +1,22 @@
+"""
+Pharmacy dispensing routes — /api/v1/pharmacy/*
+
+Endpoints
+---------
+GET  /queue                               — list visits awaiting_pharmacy, with
+                                            pending/total prescription counts.
+GET  /visits/{visit_id}/prescriptions     — list all prescriptions for a visit.
+PATCH /prescriptions/{id}/dispense        — mark one prescription as DISPENSED.
+POST /visits/{visit_id}/complete          — mark the visit COMPLETED.
+                                            Rejected if any prescription is still PENDING
+                                            (prevents accidentally completing an incomplete dispense).
+
+The pharmacist must dispense every prescription individually before the "complete
+visit" button becomes available. This intentional step prevents partial dispensing
+and ensures each medication is physically handed to the patient before the visit
+is closed.
+"""
+
 from datetime import UTC, datetime
 from typing import Annotated
 
@@ -28,7 +47,7 @@ def get_pharmacy_queue(db: DbSession, current_user: PharmacistUser):
         )
         .order_by(Visit.checked_in_at)
     )
-    visits = list(db.scalars(stmt))
+    visits = list(db.scalars(stmt).unique())
     return [
         {
             "visit_id": v.id,

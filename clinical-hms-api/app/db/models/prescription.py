@@ -1,3 +1,19 @@
+"""
+Prescription model — medications prescribed during a consultation.
+
+A doctor can add multiple prescriptions to a single consultation while the
+visit is in_consultation status. Each prescription starts in PENDING state.
+
+Dispense flow (pharmacy module):
+  1. Pharmacist views all PENDING prescriptions for the visit.
+  2. Pharmacist marks each one DISPENSED via PATCH /pharmacy/prescriptions/{id}/dispense.
+  3. Once all prescriptions are DISPENSED, the pharmacist posts to
+     /pharmacy/visits/{id}/complete, which moves the visit to COMPLETED.
+
+The "complete visit" endpoint rejects the request if any prescription is still
+PENDING, preventing accidental early completion.
+"""
+
 import enum
 from datetime import datetime
 

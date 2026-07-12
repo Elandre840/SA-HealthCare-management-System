@@ -1,6 +1,10 @@
-# SA Healthcare Management System
+# SA Healthcare Management System — Clinical HMS
 
-End-to-end healthcare workflow platform for South African clinics — patient registration, triage, consultations, dispensing, and reporting. Built as a portfolio project demonstrating full-stack system design and progressive modernisation from a PHP prototype to a production-style API + React SPA.
+End-to-end healthcare workflow platform for South African clinics — patient
+registration, nurse triage with vitals capture, doctor consultations with
+ICD-10 coding and prescriptions, and pharmacy dispensing. Built as a portfolio
+project demonstrating full-stack system design and a complete end-to-end
+clinical workflow.
 
 **Repository:** [github.com/Elandre840/SA-HealthCare-management-System](https://github.com/Elandre840/SA-HealthCare-management-System)  
 **Project owner:** Mj Technologies  
@@ -10,13 +14,15 @@ End-to-end healthcare workflow platform for South African clinics — patient re
 
 ## Project Status
 
-The PHP prototype has been retired. The repo now contains only the production-style rebuild:
+The PHP prototype has been retired. The repository contains only the
+production-style rebuild. **The full clinical workflow is now implemented
+end-to-end and working.**
 
 | Layer | Directory | Status |
 |---|---|---|
-| FastAPI backend | `clinical-hms-api/` | Auth shell complete, clinical layer in progress |
-| React/TypeScript frontend | `clinical-hms-web/` | Auth shell complete, clinical screens in progress |
-| Reference assets | `assets/` | Province emblems + screenshots kept for the frontend build |
+| FastAPI backend | `clinical-hms-api/` | ✅ Complete |
+| React/TypeScript frontend | `clinical-hms-web/` | ✅ Complete |
+| Docker orchestration | `docker-compose.yml` | ✅ Root-level, single command start |
 
 ---
 
@@ -24,13 +30,32 @@ The PHP prototype has been retired. The repo now contains only the production-st
 
 ```
 clinical-hms-web/          clinical-hms-api/
-React + TypeScript   ──►   FastAPI + SQLAlchemy   ──►   PostgreSQL
-Vite + Tailwind CSS        JWT auth (HS256)               (Docker)
-                           Alembic migrations
-                           Redis (reserved)
+React + TypeScript   ──►   FastAPI + SQLAlchemy   ──►   PostgreSQL 16
+Vite + Tailwind CSS        JWT auth (HS256)               (Docker volume)
+sessionStorage tokens      Alembic migrations
+                           Redis 7 (reserved)
 ```
 
-All API routes are versioned under `/api/v1`. The health check lives at `/health` (no prefix) for Docker/infra probes.
+All API routes are versioned under `/api/v1`. The health check lives at
+`/health` (no prefix) for Docker/load-balancer probes.
+
+### Clinical workflow (visit pipeline)
+
+```
+Reception registers patient
+        │
+        ▼  Visit created: awaiting_triage
+Nurse captures vitals + sets priority
+        │
+        ▼  Visit advances: awaiting_consultation
+Doctor opens consultation, adds prescriptions, closes with diagnosis
+        │
+        ├──► (prescriptions exist) awaiting_pharmacy
+        │           │
+        │           ▼  Pharmacist dispenses each medication
+        │           │
+        └──► completed
+```
 
 ---
 
@@ -40,88 +65,84 @@ All API routes are versioned under `/api/v1`. The health check lives at `/health
 
 | Area | Detail |
 |---|---|
-| Auth | `POST /api/v1/auth/register`, `login`, `refresh`, `logout`, `GET /me` |
-| Facilities | `POST /api/v1/facilities/`, `GET /api/v1/facilities/` |
-| Tokens | JWT access token (60 min) + refresh token (7 days), HS256 |
-| Security | `HTTPBearer` scheme — Swagger `Authorize` takes a raw token, not a form |
-| DB | PostgreSQL via Docker; SQLite for tests (no Postgres needed to run the test suite) |
-| Migrations | Alembic — run `alembic upgrade head` before first start |
-| Tests | `pytest` — 20 tests covering auth and facilities, all passing |
+| Auth | register (admin only), login, refresh (rotating JTIs), logout (revokes refresh), /me — JWT HS256, bcrypt passwords |
+| Facilities | create (admin) and list (authenticated) clinics; admin UI at `/facilities` |
+| Patients | register patient + auto check-in (POST /patients/) with audit log |
+| Triage | queue, vitals capture (POST), priority assignment (PATCH) with MediAlert on RED |
+| Consultations | queue, open, amend, add prescriptions, close with ICD-10 |
+| Pharmacy | queue, per-prescription dispense, complete visit |
+| Audit log | POPIA-compliant — every write logs actor, entity, and details |
+| DB | PostgreSQL via Docker; SQLite in-memory for the test suite |
+| Migrations | Alembic — two migration files covering all tables |
+| Tests | pytest — 20 tests covering auth, facilities, and health |
 
 ### Frontend — `clinical-hms-web/`
 
 | Area | Detail |
 |---|---|
-| Login | Email + password form, calls `POST /api/v1/auth/login` |
-| Token storage | `sessionStorage` — survives page refresh, clears on tab close |
-| Auto-refresh | 401 on any authenticated request silently calls `/api/v1/auth/refresh` and retries |
-| Route guard | `ProtectedRoute` reads `/api/v1/auth/me` on mount; redirects to `/login` if unauthenticated |
-| Shell | Top bar shows `full_name` + role; logout button calls `/api/v1/auth/logout` |
-| Dashboards | Role-appropriate placeholder pages for all 5 roles |
-| Tests | Vitest — form validation + token refresh retry, both passing |
+| Login | Email/password → JWT stored in sessionStorage |
+| Auto-refresh | 401 silently calls /auth/refresh and retries the original request |
+| Role routing | Dashboard redirects each role to its clinical module |
+| Patients | Search, register form with success card showing visit ID |
+| Facilities | Admin list + create form (SA province select) |
+| Triage | Queue list, VitalsCaptureForm, RED priority confirmation dialog |
+| Consultations | Queue → open → add Rx → close with diagnosis and ICD-10 |
+| Pharmacy | Queue → dispense each Rx individually → complete visit |
+| AppShell | Role-based nav links, user name/role display, logout |
 
 ---
 
-## Quick start (Docker)
+## Quick start — Docker (recommended)
 
-All services run in Docker — no local Python or Node installation required.
+All services run in Docker. **No local Python or Node installation required.**
 
-### 1. Clone and configure
-
-```bash
-git clone https://github.com/Elandre840/SA-HealthCare-management-System.git
-cd SA-HealthCare-management-System
-```
-
-Copy the environment files:
+### Four commands (from the repo root)
 
 ```bash
-cp clinical-hms-api/.env.example clinical-hms-api/.env
-cp clinical-hms-web/.env.example clinical-hms-web/.env
-```
+# 0. Once only — if clinical-hms-api/.env does not exist yet:
+#    copy clinical-hms-api\.env.example clinical-hms-api\.env   (Windows)
+#    cp clinical-hms-api/.env.example clinical-hms-api/.env     (macOS/Linux)
 
-### 2. Start the stack
-
-```bash
-cd clinical-hms-api
-docker compose up -d
-```
-
-This starts three containers: `clinical_hms_api` (FastAPI on `:8000`), `clinical_hms_postgres`, and `clinical_hms_redis`.
-
-### 3. Run migrations and seed demo data
-
-```bash
+docker compose up -d --build
 docker compose exec api alembic upgrade head
 docker compose exec api python -m scripts.seed_demo
 ```
 
-The seed script creates one facility (Demo Community Clinic, Johannesburg) and five staff accounts — one per role. All share the password `Password123!`.
+Then open **http://localhost:5173** (API docs: http://localhost:8000/docs).
 
-| Role | Email |
-|---|---|
-| Admin | `admin@clinicdemo.co.za` |
-| Reception | `reception@clinicdemo.co.za` |
-| Nurse | `nurse@clinicdemo.co.za` |
-| Doctor | `doctor@clinicdemo.co.za` |
-| Pharmacist | `pharmacist@clinicdemo.co.za` |
+> The default `.env.example` values work out-of-the-box with Docker Compose.
+> Change `SECRET_KEY` before any internet-facing deployment.
 
-### 4. Start the frontend
+### Demo credentials
 
-```bash
-docker compose up -d web
-```
+All accounts use the password `Password123!`
 
-The React dev server is available at [http://localhost:5173](http://localhost:5173).
+| Role | Email | Module |
+|---|---|---|
+| Admin | `admin@clinicdemo.co.za` | All modules |
+| Reception | `reception@clinicdemo.co.za` | `/patients` |
+| Nurse | `nurse@clinicdemo.co.za` | `/triage` |
+| Doctor | `doctor@clinicdemo.co.za` | `/consultations` |
+| Pharmacist | `pharmacist@clinicdemo.co.za` | `/pharmacy` |
 
-### 5. Explore the API
+### Authorising requests in Swagger UI
 
-Swagger UI: [http://localhost:8000/docs](http://localhost:8000/docs)
-
-To authorize in Swagger:
 1. Call `POST /api/v1/auth/login` with your credentials (JSON body).
 2. Copy the `access_token` from the response.
-3. Click **Authorize** and paste the token into the `HTTPBearer` field.
+3. Click **Authorize** (top right) and paste the token.
+
+### Stopping / resetting
+
+```bash
+# Stop containers but keep the database volume
+docker compose stop
+
+# Remove containers (database volume is kept)
+docker compose down
+
+# Remove everything including the PostgreSQL data volume
+docker compose down -v
+```
 
 ---
 
@@ -133,7 +154,8 @@ To authorize in Swagger:
 docker compose exec api python -m pytest tests/ -v
 ```
 
-No running Postgres needed — the test suite uses SQLite in-memory via `StaticPool`.
+The test suite uses SQLite in-memory via `StaticPool` — no running Postgres
+required and no test data ever touches the development database.
 
 ### Frontend (Vitest)
 
@@ -146,51 +168,51 @@ docker compose run --rm web npm test
 ## Project structure
 
 ```
-SA-HealthCare-management-System/
-├── assets/
-│   ├── backgrounds/          # SA flag (used for login UI)
-│   ├── emblems/              # 9 province crests (used for role dashboards)
-│   └── screenshots/          # Portfolio screenshots of the PHP prototype
+clinic_system/
+├── docker-compose.yml          ← Start everything from here
+├── README.md
 │
-├── clinical-hms-api/         # FastAPI backend
-│   ├── alembic/              # Database migrations
+├── clinical-hms-api/           FastAPI backend
+│   ├── .env.example            Copy to .env before running
+│   ├── .env.sqlite.example     Alternative: SQLite local dev (no Docker needed)
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   ├── alembic/
+│   │   ├── env.py              Model imports for migration autogenerate
+│   │   └── versions/           Migration files
 │   ├── app/
-│   │   ├── api/routes/       # auth.py, facilities.py, health.py
-│   │   ├── core/             # config.py, security.py (JWT)
-│   │   ├── db/               # models/, session.py, base.py
-│   │   ├── schemas/          # Pydantic I/O schemas
-│   │   └── services/         # auth_service.py
-│   ├── scripts/seed_demo.py  # Demo data seeder
-│   ├── tests/                # pytest suite
-│   ├── docker-compose.yml    # API + Postgres + Redis + Web
-│   ├── Dockerfile            # python:3.12 image
-│   └── requirements.txt
+│   │   ├── main.py             FastAPI app, CORS, router registration
+│   │   ├── api/
+│   │   │   ├── deps.py         Auth dependencies + role guards
+│   │   │   └── routes/         auth, patients, triage, consultations, pharmacy
+│   │   ├── core/
+│   │   │   ├── config.py       Pydantic Settings (env vars)
+│   │   │   └── security.py     bcrypt hashing, JWT create/decode
+│   │   ├── db/
+│   │   │   ├── base.py         DeclarativeBase
+│   │   │   ├── session.py      Engine + get_db() dependency
+│   │   │   └── models/         Facility, User, Patient, Visit, Vitals,
+│   │   │                       Consultation, Prescription, AuditLog
+│   │   ├── schemas/            Pydantic I/O schemas for each route module
+│   │   └── services/           auth_service, audit_service
+│   └── scripts/seed_demo.py    Demo data seeder (development only)
 │
-├── clinical-hms-web/         # React frontend
-│   ├── src/
-│   │   ├── auth/             # AuthContext, ProtectedRoute, useAuth
-│   │   ├── components/       # AppShell (top bar + logout)
-│   │   ├── lib/              # api.ts (typed fetch client), session.ts
-│   │   ├── pages/            # LoginPage, DashboardPage
-│   │   └── types/            # auth.ts (User, TokenResponse, etc.)
-│   ├── Dockerfile            # node:22-alpine image
-│   └── package.json
+├── clinical-hms-web/           React + TypeScript SPA
+│   ├── .env.example            Copy to .env if running outside Docker
+│   ├── Dockerfile
+│   ├── package.json
+│   └── src/
+│       ├── main.tsx            App bootstrap + provider hierarchy
+│       ├── App.tsx             Route tree with role guards
+│       ├── auth/               AuthContext, ProtectedRoute, useAuth
+│       ├── components/         AppShell (nav), VitalsCaptureForm
+│       ├── lib/                api.ts (typed API client), session.ts, triageValidation.ts
+│       ├── pages/              Login, Dashboard, Patients, Triage, Consultation, Pharmacy
+│       └── types/              auth.ts, patient.ts, triage.ts, consultation.ts
 │
-└── README.md
+└── assets/
+    └── screenshots/            Portfolio screenshots
 ```
-
----
-
-## What's next
-
-The clinical layer (patients → triage → vitals → consultation → prescriptions → pharmacy) is the next build phase. This will add:
-
-- `Patient` registration endpoint (reception)
-- `Visit` check-in and triage queue (nurse)
-- `Vitals` recording + MediAlert on RED triage
-- `Consultation` with ICD-10 diagnosis and prescriptions (doctor)
-- Prescription dispensing and visit completion (pharmacist)
-- `AuditLog` for POPIA compliance
 
 ---
 
@@ -198,11 +220,11 @@ The clinical layer (patients → triage → vitals → consultation → prescrip
 
 | Layer | Technology |
 |---|---|
-| API framework | FastAPI 0.x, Pydantic v2 |
+| API framework | FastAPI, Pydantic v2 |
 | ORM / migrations | SQLAlchemy 2.0, Alembic |
-| Auth | JWT (python-jose), bcrypt (passlib) |
-| Database | PostgreSQL 16 (production), SQLite (tests) |
-| Cache / queue | Redis 7 (reserved for future use) |
+| Auth | JWT HS256 (python-jose), bcrypt |
+| Database | PostgreSQL 16 (Docker), SQLite in-memory (tests) |
+| Cache / queue | Redis 7 (refresh-token revocation; reserved for queues/caching) |
 | Frontend | React 19, TypeScript 6, Vite 8, Tailwind CSS 4 |
 | Containerisation | Docker, Docker Compose |
 | Backend tests | pytest, httpx2, SQLite + StaticPool |
@@ -210,10 +232,19 @@ The clinical layer (patients → triage → vitals → consultation → prescrip
 
 ---
 
+## Known limitations and future improvements
+
+| Area | Description |
+|---|---|
+| Production API process | Compose still runs uvicorn with `--reload` for local development. Remove `--reload` (and prefer gunicorn/uvicorn workers) for a hardened deploy. |
+
+---
+
 ## Notes
 
-- Portfolio / demo use only — not intended for real clinical deployment without full security hardening.
-- Demo credentials are intentionally simple (`Password123!`) for local testing.
+- Portfolio / demo project — not for real clinical use without full security hardening.
+- Demo credentials are intentionally simple for local testing. Change `SECRET_KEY`
+  and all passwords before any internet-facing deployment.
 - Do not commit real patient data or production secrets.
 
 ---
@@ -222,8 +253,6 @@ The clinical layer (patients → triage → vitals → consultation → prescrip
 
 **Owner:** Mj Technologies  
 **Developer:** Elandre Booth
-
-Feel free to connect via GitHub for collaboration or feedback.
 
 ---
 

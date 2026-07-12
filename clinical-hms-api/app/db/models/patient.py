@@ -1,3 +1,15 @@
+"""
+Patient demographic record.
+
+A Patient is the persistent identity of a person registered at a facility.
+Each time the patient visits the clinic a new Visit record is created —
+the Patient record itself is never duplicated.
+
+folder_number is the physical file folder reference used by clinic staff.
+If the receptionist does not supply one it is auto-generated as F-{patient.id:04d}
+immediately after the INSERT so the number is stable and unique.
+"""
+
 from datetime import date, datetime
 
 from sqlalchemy import Date, DateTime, ForeignKey, String, func

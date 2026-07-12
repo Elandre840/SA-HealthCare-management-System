@@ -1,3 +1,19 @@
+"""
+Patient registration routes — /api/v1/patients/*
+
+Endpoints
+---------
+POST /     — register a new patient AND automatically create an awaiting_triage
+             visit in a single transaction. The receptionist never needs to open
+             a separate "create visit" form; check-in is implicit on registration.
+GET  /?search=  — list patients for the current facility, optionally filtered by
+                  name or folder number (case-insensitive ILIKE).
+
+folder_number is auto-generated as F-{patient.id:04d} if not supplied. We flush
+the session to get the database-assigned patient.id before constructing the
+folder number, then commit both records together so they are always consistent.
+"""
+
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
